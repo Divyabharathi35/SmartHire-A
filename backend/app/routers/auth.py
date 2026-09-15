@@ -6,7 +6,7 @@ import hashlib
 import secrets
 
 import asyncpg
-from fastapi import APIRouter, Depends, HTTPException, Response, status
+from fastapi import APIRouter, Depends, HTTPException, Request, Response, status
 
 from app.database import get_db
 from app.dependencies import CurrentUser
@@ -20,6 +20,17 @@ from app.config import settings
 router = APIRouter(prefix="/api/auth", tags=["Authentication"])
 
 COOKIE_MAX_AGE = settings.ACCESS_TOKEN_EXPIRE_MINUTES * 60  # seconds
+
+
+def _mask_email(email: str) -> str:
+    if not email or "@" not in email:
+        return "***"
+    name_part, domain_part = email.split("@", 1)
+    if len(name_part) <= 1:
+        masked_name = "*"
+    else:
+        masked_name = name_part[0] + "*" * (len(name_part) - 1)
+    return f"{masked_name}@{domain_part}"
 
 
 def _set_auth_cookie(response: Response, token: str):
@@ -73,8 +84,11 @@ async def register(body: RegisterRequest, response: Response, db: asyncpg.Connec
 #  POST /api/auth/login
 # ──────────────────────────────────────────────
 @router.post("/login", response_model=AuthResponse)
-async def login(body: LoginRequest, response: Response, db: asyncpg.Connection = Depends(get_db)):
+async def login(body: LoginRequest, request: Request, response: Response, db: asyncpg.Connection = Depends(get_db)):
     clean_email = body.email.strip().lower()
+    masked_email = _mask_email(clean_email)
+    origin_header = request.headers.get("origin", "N/A")
+
     user = await db.fetchrow(
         "SELECT id, name, email, password_hash, role, auth_provider, avatar_url, is_active, last_login_at, created_at "
         "FROM users WHERE LOWER(TRIM(email)) = $1",
@@ -82,21 +96,27 @@ async def login(body: LoginRequest, response: Response, db: asyncpg.Connection =
     )
 
     if not user:
-        print(f"[Auth] Login failed: No user record found for email '{clean_email}'")
+        print(f"[AUTH DIAGNOSTIC] Email: {masked_email} | Origin: {origin_header} | Found: False | Active: N/A | PwVerify: N/A | Status: 401 | Set-Cookie: False")
         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid email or password.")
+
+    user_found = True
+    user_active = bool(user["is_active"])
 
     if not user["password_hash"]:
         provider = str(user.get("auth_provider", "OAuth")).capitalize()
+        print(f"[AUTH DIAGNOSTIC] Email: {masked_email} | Origin: {origin_header} | Found: True | Active: {user_active} | PwVerify: OAuthAccount ({provider}) | Status: 400 | Set-Cookie: False")
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail=f"This account is registered via {provider} sign-in. Please sign in with {provider}."
         )
 
-    if not user["is_active"]:
+    if not user_active:
+        print(f"[AUTH DIAGNOSTIC] Email: {masked_email} | Origin: {origin_header} | Found: True | Active: False | PwVerify: N/A | Status: 403 | Set-Cookie: False")
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Account deactivated. Contact an administrator.")
 
-    if not verify_password(body.password, user["password_hash"]):
-        print(f"[Auth] Login failed: Password mismatch for email '{clean_email}'")
+    pw_ok = verify_password(body.password, user["password_hash"])
+    if not pw_ok:
+        print(f"[AUTH DIAGNOSTIC] Email: {masked_email} | Origin: {origin_header} | Found: True | Active: True | PwVerify: False | Status: 401 | Set-Cookie: False")
         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid email or password.")
 
     # Update last_login_at
@@ -105,6 +125,8 @@ async def login(body: LoginRequest, response: Response, db: asyncpg.Connection =
     role_str = str(user["role"]).lower()
     token = create_access_token({"id": str(user["id"]), "email": user["email"], "role": role_str, "name": user["name"]})
     _set_auth_cookie(response, token)
+
+    print(f"[AUTH DIAGNOSTIC] Email: {masked_email} | Origin: {origin_header} | Found: True | Active: True | PwVerify: True | Status: 200 | Set-Cookie: True")
 
     return AuthResponse(success=True, message="Login successful.", user=_row_to_user(user))
 

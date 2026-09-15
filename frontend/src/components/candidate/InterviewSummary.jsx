@@ -178,14 +178,15 @@ function MetaRow({ icon: Icon, label, value }) {
 }
 
 // ── Main Component ────────────────────────────────────────────
-export default function InterviewSummary({ session, onBack }) {
+export default function InterviewSummary({ session: sessionProp, onBack }) {
+  const session = sessionProp || {};
   const {
-    id, job_role, domain, interview_type, difficulty,
+    id: sessionId, job_role, domain, interview_type, difficulty,
     score, duration, questions = [], started_at, ended_at,
     auto_expired, status, created_at,
-  } = session || {};
+  } = session;
+  const id = sessionId || session.session_id;
 
-  const API_BASE = import.meta.env.VITE_API_URL || 'http://localhost:5000';
   const [fetchedResult, setFetchedResult] = useState(null);
   const [loadingResult, setLoadingResult] = useState(false);
 
@@ -194,14 +195,7 @@ export default function InterviewSummary({ session, onBack }) {
     const fetchResults = async () => {
       setLoadingResult(true);
       try {
-        const token = localStorage.getItem('smarthire_token') || localStorage.getItem('token') || localStorage.getItem('access_token');
-        const headers = {};
-        if (token) headers['Authorization'] = `Bearer ${token}`;
-
-        const res = await fetch(`${API_BASE}/api/interviews/sessions/${id}/results`, {
-          headers,
-          credentials: 'include'
-        });
+        const res = await apiFetch(`/api/interviews/sessions/${id}/results`);
         if (res.ok) {
           const data = await res.json();
           if (data && data.result) {
@@ -273,16 +267,8 @@ export default function InterviewSummary({ session, onBack }) {
     setDownloadingPdf(true);
     setPdfError(null);
     try {
-      const token = localStorage.getItem('smarthire_token') || localStorage.getItem('token') || localStorage.getItem('access_token');
-      const headers = {};
-      if (token) {
-        headers['Authorization'] = `Bearer ${token}`;
-      }
-      const queryToken = token ? `?token=${encodeURIComponent(token)}` : '';
-      const res = await fetch(`${API_BASE}/api/candidate/interviews/${id}/report.pdf${queryToken}`, {
-        method: 'GET',
-        headers,
-        credentials: 'include',
+      const res = await apiFetch(`/api/candidate/interviews/${id}/report.pdf`, {
+        method: 'GET'
       });
 
       if (!res.ok) {

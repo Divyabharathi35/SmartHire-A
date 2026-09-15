@@ -67,6 +67,37 @@ class LoginRequest(BaseModel):
     password: str
 
 
+class ForgotPasswordRequest(BaseModel):
+    email: EmailStr
+
+
+class ResetPasswordRequest(BaseModel):
+    token: str
+    new_password: str
+
+    @field_validator("new_password")
+    @classmethod
+    def new_password_strength(cls, v: str) -> str:
+        import re
+        if len(v) < 8:
+            raise ValueError("Password must be at least 8 characters")
+        if not re.search(r"[A-Z]", v):
+            raise ValueError("Password must contain an uppercase letter")
+        if not re.search(r"[a-z]", v):
+            raise ValueError("Password must contain a lowercase letter")
+        if not re.search(r"\d", v):
+            raise ValueError("Password must contain a number")
+        if not re.search(r"[@$!%*?&]", v):
+            raise ValueError("Password must contain a special character (@$!%*?&)")
+        return v
+
+
+class ForgotPasswordResponse(BaseModel):
+    success: bool
+    message: str
+    reset_token: Optional[str] = None
+
+
 class UpdateUserRequest(BaseModel):
     name:     Optional[str]      = None
     email:    Optional[EmailStr] = None
@@ -93,7 +124,7 @@ class UserResponse(BaseModel):
 class AuthResponse(BaseModel):
     success: bool
     message: str
-    user:    UserResponse
+    user: UserResponse
 
 
 class MessageResponse(BaseModel):

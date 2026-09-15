@@ -39,6 +39,14 @@ class Settings(BaseSettings):
     GEMINI_API_KEY: str = ""
     OPENAI_API_KEY: str = ""
 
+    def model_post_init(self, __context):
+        if self.ENVIRONMENT == "production":
+            # In production cross-origin context, cookies MUST be Secure and SameSite=None
+            if "COOKIE_SECURE" not in os.environ:
+                self.COOKIE_SECURE = True
+            if "COOKIE_SAMESITE" not in os.environ:
+                self.COOKIE_SAMESITE = "none"
+
 
 settings = Settings()
 

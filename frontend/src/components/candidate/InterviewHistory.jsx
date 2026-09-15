@@ -3,6 +3,7 @@
 // ============================================================
 import { useState, useEffect } from 'react';
 import { Clock, Download, ChevronDown, ChevronUp, Tag, Star, Play, Award, Filter } from 'lucide-react';
+import { apiFetch, getAuthToken, API_BASE } from '../../api/apiClient';
 import ErrorBoundary from '../common/ErrorBoundary';
 
 function ScoreRing({ score, size = 60 }) {
@@ -55,10 +56,7 @@ export default function InterviewHistory() {
     setLoading(true);
     setFetchError(null);
     try {
-      const res = await fetch(`${API_BASE}/api/history`, {
-        method: 'GET',
-        credentials: 'include',
-      });
+      const res = await apiFetch('/api/history', { method: 'GET' });
       if (res.ok) {
         const data = await res.json();
         setSessions(data || []);
@@ -76,20 +74,13 @@ export default function InterviewHistory() {
     }
   };
 
-const API_BASE = import.meta.env.VITE_API_URL || 'http://localhost:5000';
-
   const handleDownload = async (id) => {
     setDownloading(id);
     try {
-      const token = localStorage.getItem('smarthire_token') || localStorage.getItem('token') || localStorage.getItem('access_token');
-      const headers = {};
-      if (token) headers['Authorization'] = `Bearer ${token}`;
+      const token = getAuthToken();
       const queryToken = token ? `?token=${encodeURIComponent(token)}` : '';
 
-      const res = await fetch(`${API_BASE}/api/candidate/interviews/${id}/report.pdf${queryToken}`, {
-        headers,
-        credentials: 'include'
-      });
+      const res = await apiFetch(`/api/candidate/interviews/${id}/report.pdf${queryToken}`);
       if (res.ok) {
         const blob = await res.blob();
         const url = window.URL.createObjectURL(blob);

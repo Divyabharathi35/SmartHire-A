@@ -2,13 +2,12 @@
 //  ComparisonDashboard.jsx — Side-by-side Candidate Analytics
 // ============================================================
 import { useState, useEffect } from 'react';
+import { apiFetch } from '../../api/apiClient';
 import {
   RadarChart, Radar, PolarGrid, PolarAngleAxis, PolarRadiusAxis, ResponsiveContainer, Legend, Tooltip
 } from 'recharts';
 import { ArrowUp, ArrowDown, Minus, RefreshCw, AlertCircle, Users } from 'lucide-react';
 import ErrorBoundary from '../common/ErrorBoundary';
-
-const API_BASE = import.meta.env.VITE_API_URL || 'http://localhost:5000';
 
 function DeltaBadge({ diff }) {
   if (diff === null || diff === undefined) {
@@ -18,8 +17,8 @@ function DeltaBadge({ diff }) {
     return <span className="badge badge-neutral"><Minus size={10} /> Tie</span>;
   }
   return diff > 0
-    ? <span className="badge badge-success"><ArrowUp size={10} /> +{diff}</span>
-    : <span className="badge badge-danger"><ArrowDown size={10} /> {diff}</span>;
+    ? <span className="badge badge-success"><ArrowUp size={10} /> +{diff.toFixed(1)} pts</span>
+    : <span className="badge badge-warning"><ArrowDown size={10} /> {diff.toFixed(1)} pts</span>;
 }
 
 function getStatusBadgeClass(statusStr) {
@@ -38,20 +37,13 @@ function getStatusBadgeClass(statusStr) {
 }
 
 function ComparisonDashboardContent() {
-  const [candidatesList, setCandidatesList] = useState([]);
+  const [candidates, setCandidates]         = useState([]);
   const [sessionA, setSessionA]             = useState('');
   const [sessionB, setSessionB]             = useState('');
   const [comparisonData, setComparisonData] = useState(null);
   const [loading, setLoading]               = useState(true);
   const [compLoading, setCompLoading]       = useState(false);
   const [error, setError]                   = useState(null);
-
-  const getHeaders = () => {
-    const token = localStorage.getItem('smarthire_token') || localStorage.getItem('token') || localStorage.getItem('access_token');
-    const headers = {};
-    if (token) headers['Authorization'] = `Bearer ${token}`;
-    return headers;
-  };
 
   // 1. Fetch Candidate List for Selectors
   useEffect(() => {
@@ -60,25 +52,17 @@ function ComparisonDashboardContent() {
       setLoading(true);
       setError(null);
       try {
-        const res = await fetch(`${API_BASE}/api/recruiter/interviews?sort_by=completed_at&sort_order=desc`, {
-          credentials: 'include',
-          headers: getHeaders(),
-        });
+        const res = await apiFetch('/api/recruiter/interviews?sort_by=completed_at&sort_order=desc');
 
         if (res.ok) {
           const data = await res.json();
           if (isMounted) {
-            // Include candidates with sessions (prefer completed sessions)
-            setCandidatesList(data || []);
-            if (data && data.length > 0) {
-              const firstId = String(data[0].session_id || data[0].id);
-              setSessionA(firstId);
-              if (data.length > 1) {
-                const secondId = String(data[1].session_id || data[1].id);
-                setSessionB(secondId);
-              } else {
-                setSessionB(firstId);
-              }
+            setCandidates(data || []);
+            if (data && data.length >= 2) {
+              setSessionA(data[0].session_id || data[0].id);
+              setSessionB(data[1].session_id || data[1].id);
+            } else if (data && data.length === 1) {
+              setSessionA(data[0].session_id || data[0].id);
             }
           }
         } else {
@@ -87,7 +71,7 @@ function ComparisonDashboardContent() {
         }
       } catch (err) {
         console.error('[ComparisonDashboard] Fetch candidates error:', err);
-        if (isMounted) setError(err.message || 'Network error fetching candidates');
+        if (isMounted) setError(err.message || 'Network error loading candidate list');
       } finally {
         if (isMounted) setLoading(false);
       }
@@ -97,21 +81,24 @@ function ComparisonDashboardContent() {
     return () => { isMounted = false; };
   }, []);
 
-  // 2. Fetch Side-by-Side Comparison when Session Selection Changes
+  // 2. Fetch Comparison whenever sessionA or sessionB changes
   useEffect(() => {
     let isMounted = true;
-    if (!sessionA && !sessionB) return;
+    if (!sessionA && !sessionB) {
+      setComparisonData(null);
+      return;
+    }
 
     const fetchComparison = async () => {
       setCompLoading(true);
       try {
-        let url = `${API_BASE}/api/recruiter/comparison`;
+        let endpoint = '/api/recruiter/comparison';
         const params = [];
         if (sessionA) params.push(`session_id_a=${encodeURIComponent(sessionA)}`);
         if (sessionB) params.push(`session_id_b=${encodeURIComponent(sessionB)}`);
-        if (params.length > 0) url += `?${params.join('&')}`;
+        if (params.length > 0) endpoint += `?${params.join('&')}`;
 
-        const res = await fetch(url, { credentials: 'include', headers: getHeaders() });
+        const res = await apiFetch(endpoint);
         if (res.ok) {
           const data = await res.json();
           if (isMounted) setComparisonData(data);

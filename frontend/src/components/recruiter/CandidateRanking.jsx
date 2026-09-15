@@ -15,30 +15,30 @@ const INTERVIEW_TYPE_OPTIONS = [
   { value: 'Aptitude', label: 'Aptitude Interview' },
 ];
 
-export default function CandidateRanking({ onTabChange }) {
-  const [candidates, setCandidates]     = useState([]);
+export default function CandidateRanking({ onSelectCandidate }) {
+  const [candidates, setCandidates]       = useState([]);
   const [loading, setLoading]             = useState(true);
   const [error, setError]                 = useState(null);
-  const [search, setSearch]               = useState('');
   const [interviewType, setInterviewType] = useState('all');
+  const [search, setSearch]               = useState('');
+
+  useEffect(() => {
+    fetchRankings();
+  }, [interviewType, search]);
 
   const fetchRankings = async () => {
     setLoading(true);
     setError(null);
     try {
-      const token = localStorage.getItem('smarthire_token') || localStorage.getItem('token') || localStorage.getItem('access_token');
-      const headers = {};
-      if (token) headers['Authorization'] = `Bearer ${token}`;
-
-      let url = `${API_BASE}/api/recruiter/interviews?sort_by=score&sort_order=desc`;
+      let endpoint = '/api/recruiter/interviews?sort_by=score&sort_order=desc';
       if (interviewType !== 'all') {
-        url += `&interview_type=${encodeURIComponent(interviewType)}`;
+        endpoint += `&interview_type=${encodeURIComponent(interviewType)}`;
       }
       if (search.trim()) {
-        url += `&search=${encodeURIComponent(search.trim())}`;
+        endpoint += `&search=${encodeURIComponent(search.trim())}`;
       }
 
-      const res = await fetch(url, { credentials: 'include', headers });
+      const res = await apiFetch(endpoint);
       if (res.ok) {
         const data = await res.json();
         setCandidates(data || []);

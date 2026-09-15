@@ -723,9 +723,11 @@ export class ProctoringWarningManager {
     this.eventQueue = [];
 
     try {
+      const headers = { 'Content-Type': 'application/json' };
+
       const res = await fetch(`${this.apiBase}/api/interviews/${this.sessionId}/proctoring/events`, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers,
         body: JSON.stringify({ events: eventsToSend }),
         credentials: 'include'
       });

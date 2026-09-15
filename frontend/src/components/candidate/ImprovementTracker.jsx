@@ -43,14 +43,8 @@ export default function ImprovementTracker() {
     setLoading(true);
     setError(null);
     try {
-      const token = localStorage.getItem('smarthire_token') || localStorage.getItem('token') || localStorage.getItem('access_token');
-      const headers = {};
-      if (token) headers['Authorization'] = `Bearer ${token}`;
-
-      const res = await fetch(`${API_BASE}/api/candidate/performance-analytics`, {
-        method: 'GET',
-        headers,
-        credentials: 'include'
+      const res = await apiFetch('/api/candidate/performance-analytics', {
+        method: 'GET'
       });
 
       if (res.ok) {

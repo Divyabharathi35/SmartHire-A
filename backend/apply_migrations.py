@@ -127,6 +127,13 @@ async def main():
                 await conn.execute(f.read())
             print("[SmartHire] Migration 016 applied successfully!")
 
+        mig17_path = os.path.join(base_dir, "Database", "migrations", "017_create_password_resets.sql")
+        if os.path.exists(mig17_path):
+            print("[SmartHire] Applying migration 017_create_password_resets.sql...")
+            with open(mig17_path, "r", encoding="utf-8") as f:
+                await conn.execute(f.read())
+            print("[SmartHire] Migration 017 applied successfully!")
+
 
         # Ensure all columns exist across all tables in case tables pre-existed
         await conn.execute("""

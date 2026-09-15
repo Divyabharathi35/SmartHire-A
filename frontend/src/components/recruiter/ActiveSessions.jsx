@@ -1,7 +1,6 @@
 import { useEffect, useState } from 'react';
 import { MonitorPlay, Clock, Wifi, RefreshCw } from 'lucide-react';
-
-const API_BASE = import.meta.env.VITE_API_URL || 'http://localhost:5000';
+import { apiFetch } from '../../api/apiClient';
 
 function formatSecs(secs) {
   const m = Math.floor((secs || 0) / 60);
@@ -15,9 +14,7 @@ export default function ActiveSessions() {
 
   const fetchActiveSessions = async () => {
     try {
-      const res = await fetch(`${API_BASE}/api/recruiter/interviews?status_filter=in_progress`, {
-        credentials: 'include'
-      });
+      const res = await apiFetch('/api/recruiter/interviews?status_filter=in_progress');
       if (res.ok) {
         const data = await res.json();
         setSessions(data);

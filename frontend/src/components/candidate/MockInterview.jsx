@@ -4,8 +4,7 @@
 // ============================================================
 import { useState, useEffect } from 'react';
 import { Sparkles, CheckCircle2, Play, ArrowLeft, ArrowRight, Clock, HelpCircle, FileText, History, AlertCircle } from 'lucide-react';
-
-const API_BASE = import.meta.env.VITE_API_URL || 'http://localhost:5000';
+import { apiFetch } from '../../api/apiClient';
 
 export default function MockInterview() {
   const [activeTab, setActiveTab] = useState('setup'); // 'setup' | 'room' | 'complete' | 'history'
@@ -44,9 +43,8 @@ export default function MockInterview() {
   const fetchHistory = async () => {
     setIsLoadingHistory(true);
     try {
-      const res = await fetch(`${API_BASE}/api/mock-interviews/sessions`, {
-        method: 'GET',
-        credentials: 'include',
+      const res = await apiFetch('/api/mock-interviews/sessions', {
+        method: 'GET'
       });
       if (res.ok) {
         const data = await res.json();
@@ -65,10 +63,9 @@ export default function MockInterview() {
     setIsGenerating(true);
 
     try {
-      const res = await fetch(`${API_BASE}/api/mock-interviews/sessions`, {
+      const res = await apiFetch('/api/mock-interviews/sessions', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        credentials: 'include',
         body: JSON.stringify({
           job_role: jobRole,
           domain,
@@ -78,22 +75,17 @@ export default function MockInterview() {
           user_skills: userSkills || null,
         }),
       });
-
-      const data = await res.json();
       if (!res.ok) {
-        throw new Error(data.detail || 'Failed to start practice session');
+        const errData = await res.json().catch(() => ({}));
+        throw new Error(errData.detail || 'Failed to generate practice session.');
       }
-
+      const data = await res.json();
       setCurrentSession(data);
       setCurrentIndex(0);
-      const initialAnswers = {};
-      (data.questions || []).forEach(q => {
-        initialAnswers[q.id] = q.user_answer || '';
-      });
-      setAnswers(initialAnswers);
+      setAnswers({});
       setActiveTab('room');
     } catch (err) {
-      setErrorMsg(err.message || 'Error starting practice interview');
+      setErrorMsg(err.message || 'Server error while generating session');
     } finally {
       setIsGenerating(false);
     }
@@ -106,10 +98,9 @@ export default function MockInterview() {
 
     setIsSubmitting(true);
     try {
-      await fetch(`${API_BASE}/api/mock-interviews/sessions/${currentSession.id}/answer`, {
+      await apiFetch(`/api/mock-interviews/sessions/${currentSession.id}/answer`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        credentials: 'include',
         body: JSON.stringify({
           question_id: q.id,
           user_answer: userAns,
@@ -141,9 +132,8 @@ export default function MockInterview() {
     setIsEndingSession(true);
     try {
       await handleSaveCurrentAnswer();
-      const res = await fetch(`${API_BASE}/api/mock-interviews/sessions/${currentSession.id}/end`, {
-        method: 'POST',
-        credentials: 'include',
+      const res = await apiFetch(`/api/mock-interviews/sessions/${currentSession.id}/end`, {
+        method: 'POST'
       });
       if (res.ok) {
         const summary = await res.json();
@@ -162,9 +152,8 @@ export default function MockInterview() {
 
   const viewHistoryDetail = async (sessionId) => {
     try {
-      const res = await fetch(`${API_BASE}/api/mock-interviews/sessions/${sessionId}`, {
-        method: 'GET',
-        credentials: 'include',
+      const res = await apiFetch(`/api/mock-interviews/sessions/${sessionId}`, {
+        method: 'GET'
       });
       if (res.ok) {
         const data = await res.json();

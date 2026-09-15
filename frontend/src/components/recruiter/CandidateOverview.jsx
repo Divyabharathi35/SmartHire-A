@@ -3,8 +3,7 @@ import { Users, BarChart2, Briefcase, Video, ArrowUp, ArrowDown, CheckCircle, Cl
 import {
   BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Cell
 } from 'recharts';
-
-const API_BASE = import.meta.env.VITE_API_URL || 'http://localhost:5000';
+import { apiFetch } from '../../api/apiClient';
 
 const skillData = [
   { name: 'Python', count: 32 }, { name: 'React', count: 28 }, { name: 'SQL', count: 24 },
@@ -27,8 +26,8 @@ export default function CandidateOverview() {
   const loadBackendData = async () => {
     try {
       const [resAnalytics, resInterviews] = await Promise.all([
-        fetch(`${API_BASE}/api/recruiter/analytics`, { credentials: 'include' }),
-        fetch(`${API_BASE}/api/recruiter/interviews?sort_by=score&sort_order=desc`, { credentials: 'include' })
+        apiFetch('/api/recruiter/analytics'),
+        apiFetch('/api/recruiter/interviews?sort_by=score&sort_order=desc')
       ]);
 
       if (resAnalytics.ok) {

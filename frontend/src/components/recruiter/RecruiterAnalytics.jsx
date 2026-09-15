@@ -7,6 +7,7 @@
 //  4. Shortlisted Candidates List (Full Width)
 // ============================================================
 import { useState, useEffect } from 'react';
+import { apiFetch } from '../../api/apiClient';
 import {
   BarChart, Bar, LineChart, Line, PieChart, Pie, Cell, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, LabelList
 } from 'recharts';
@@ -44,11 +45,7 @@ export default function RecruiterAnalytics({ onTabChange }) {
     setLoading(true);
     setError(null);
     try {
-      const token = localStorage.getItem('smarthire_token') || localStorage.getItem('token') || localStorage.getItem('access_token');
-      const headers = {};
-      if (token) headers['Authorization'] = `Bearer ${token}`;
-
-      const res = await fetch(`${API_BASE}/api/recruiter/analytics`, { credentials: 'include', headers });
+      const res = await apiFetch('/api/recruiter/analytics');
       if (res.ok) {
         const json = await res.json();
         setData(json);

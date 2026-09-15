@@ -5,6 +5,7 @@
 //  2. Predicted Weak Areas (Horizontal Bar Graph)
 // ============================================================
 import { useState, useEffect } from 'react';
+import { apiFetch } from '../../api/apiClient';
 import {
   BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Cell, LabelList
 } from 'recharts';
@@ -38,18 +39,16 @@ export default function Analytics() {
   const [loading, setLoading] = useState(true);
   const [error, setError]     = useState(null);
 
+  useEffect(() => {
+    fetchAnalytics();
+  }, []);
+
   const fetchAnalytics = async () => {
     setLoading(true);
     setError(null);
     try {
-      const token = localStorage.getItem('smarthire_token') || localStorage.getItem('token') || localStorage.getItem('access_token');
-      const headers = {};
-      if (token) headers['Authorization'] = `Bearer ${token}`;
-
-      const res = await fetch(`${API_BASE}/api/candidate/performance-analytics`, {
-        method: 'GET',
-        headers,
-        credentials: 'include'
+      const res = await apiFetch('/api/candidate/performance-analytics', {
+        method: 'GET'
       });
       if (res.ok) {
         const json = await res.json();

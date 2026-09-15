@@ -1,4 +1,5 @@
 import { useState, useEffect, useRef } from 'react';
+import { apiFetch, getAuthToken, API_BASE } from '../../api/apiClient';
 import {
   Search, ChevronDown, ChevronUp, Filter, Star, Clock, Video,
   CheckCircle, AlertCircle, X, Award, BarChart2, Shield, RefreshCw,
@@ -7,8 +8,6 @@ import {
   User, Calendar, ExternalLink, HelpCircle, UserCheck, Layers, Smile
 } from 'lucide-react';
 import ErrorBoundary from '../common/ErrorBoundary';
-
-const API_BASE = import.meta.env.VITE_API_URL || 'http://localhost:5000';
 
 const STATUS_BADGE = {
   'completed':   'badge-success',
@@ -90,8 +89,8 @@ export default function CandidateReports() {
       if (sortOrder) queryParams.append('sort_order', sortOrder);
 
       const [resInterviews, resAnalytics] = await Promise.all([
-        fetch(`${API_BASE}/api/recruiter/interviews?${queryParams.toString()}`, { credentials: 'include' }),
-        fetch(`${API_BASE}/api/recruiter/analytics`, { credentials: 'include' })
+        apiFetch(`/api/recruiter/interviews?${queryParams.toString()}`),
+        apiFetch('/api/recruiter/analytics')
       ]);
 
       if (resInterviews.ok) {
@@ -137,9 +136,7 @@ export default function CandidateReports() {
     setActiveTab('overview');
 
     try {
-      const res = await fetch(`${API_BASE}/api/recruiter/interviews/${sessionId}/details`, {
-        credentials: 'include'
-      });
+      const res = await apiFetch(`/api/recruiter/interviews/${sessionId}/details`);
       if (res.ok) {
         const detail = await res.json();
         setSessionDetail(detail);
@@ -165,9 +162,8 @@ export default function CandidateReports() {
     if (!sessionId) return;
     setRegeneratingFeedback(true);
     try {
-      const res = await fetch(`${API_BASE}/api/recruiter/interviews/${sessionId}/regenerate-feedback`, {
-        method: 'POST',
-        credentials: 'include'
+      const res = await apiFetch(`/api/recruiter/interviews/${sessionId}/regenerate-feedback`, {
+        method: 'POST'
       });
       if (res.ok) {
         const detail = await res.json();
@@ -195,8 +191,6 @@ export default function CandidateReports() {
       setSortOrder('desc');
     }
   };
-
-  const token = localStorage.getItem('smarthire_token') || '';
 
   return (
     <div className="animate-fade-in-up candidate-reports-container">
@@ -1216,8 +1210,7 @@ export default function CandidateReports() {
                     </div>
 
                     {(() => {
-                      const token = localStorage.getItem('smarthire_token') || localStorage.getItem('token') || localStorage.getItem('access_token') || '';
-                      const videoSrc = `${API_BASE}/api/interviews/sessions/${selectedSessionId}/recording${token ? `?token=${encodeURIComponent(token)}` : ''}`;
+                      const videoSrc = `${API_BASE}/api/interviews/sessions/${selectedSessionId}/recording`;
 
                       if (sessionDetail.has_recording && !videoError) {
                         return (
@@ -1397,7 +1390,7 @@ export default function CandidateReports() {
                                   <audio
                                     controls
                                     crossOrigin="use-credentials"
-                                    src={`${API_BASE}/api/interviews/sessions/${selectedSessionId}/answers/audio/${qr.question_id || qr.id}?token=${encodeURIComponent(token)}`}
+                                    src={`${API_BASE}/api/interviews/sessions/${selectedSessionId}/answers/audio/${qr.question_id || qr.id}`}
                                     onError={(e) => {
                                       console.warn(`[CandidateReports] Audio answer playback error for Q${qNum}:`, e);
                                     }}

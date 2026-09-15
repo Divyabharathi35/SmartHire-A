@@ -150,15 +150,14 @@ export default function InterviewSession({ session: initialSession, onBackToGene
           const base64Data = frameCanvas.toDataURL('image/jpeg', 0.7);
           setEmotionModelStatus(prev => prev === 'Unavailable' ? 'Unavailable' : 'Processing');
 
-          const token = localStorage.getItem('smarthire_token') || localStorage.getItem('token') || localStorage.getItem('access_token');
           const url = `${API_BASE}/api/interviews/sessions/${session.id}/emotion-frame`;
 
           const res = await fetch(url, {
             method: 'POST',
             headers: {
               'Content-Type': 'application/json',
-              ...(token ? { 'Authorization': `Bearer ${token}` } : {})
             },
+            credentials: 'include',
             body: JSON.stringify({
               image_base64: base64Data,
               question_id: currentQuestion?.id || null,
@@ -462,10 +461,8 @@ export default function InterviewSession({ session: initialSession, onBackToGene
       formData.append('question_number', questionNumber.toString());
       formData.append('duration', (durationVal || 0).toString());
 
-      const token = localStorage.getItem('smarthire_token');
       const res = await fetch(`${API_BASE}/api/sessions/${sessionId}/answers/audio`, {
         method: 'POST',
-        headers: token ? { 'Authorization': `Bearer ${token}` } : {},
         credentials: 'include',
         body: formData,
       });
@@ -974,10 +971,8 @@ export default function InterviewSession({ session: initialSession, onBackToGene
       const ext = mimeType.includes('mp4') ? 'mp4' : 'webm';
       formData.append('file', blob, `recording_${targetSession.id}.${ext}`);
 
-      const token = localStorage.getItem('smarthire_token') || localStorage.getItem('token') || localStorage.getItem('access_token');
       const res = await fetch(`${API_BASE}/api/interviews/sessions/${targetSession.id}/recording`, {
         method: 'POST',
-        headers: token ? { 'Authorization': `Bearer ${token}` } : {},
         credentials: 'include',
         body: formData,
       });

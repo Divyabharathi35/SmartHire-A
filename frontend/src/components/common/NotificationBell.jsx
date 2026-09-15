@@ -1,7 +1,6 @@
 import { useState, useEffect, useRef } from 'react';
 import { Bell, Check, AlertCircle, Info, FileText, Clock, X } from 'lucide-react';
-
-const API_BASE = import.meta.env.VITE_API_URL || 'http://localhost:5000';
+import { apiFetch } from '../../api/apiClient';
 
 export default function NotificationBell() {
   const [notifications, setNotifications] = useState([]);
@@ -12,9 +11,7 @@ export default function NotificationBell() {
   const fetchNotifications = async () => {
     setLoading(true);
     try {
-      const res = await fetch(`${API_BASE}/api/notifications`, {
-        credentials: 'include'
-      });
+      const res = await apiFetch('/api/notifications');
       if (res.ok) {
         const data = await res.json();
         setNotifications(data || []);
@@ -44,9 +41,8 @@ export default function NotificationBell() {
 
   const markAsRead = async (id) => {
     try {
-      const res = await fetch(`${API_BASE}/api/notifications/${id}/read`, {
-        method: 'PATCH',
-        credentials: 'include'
+      const res = await apiFetch(`/api/notifications/${id}/read`, {
+        method: 'PATCH'
       });
       if (res.ok) {
         setNotifications(prev => prev.map(n => n.id === id ? { ...n, is_read: true } : n));

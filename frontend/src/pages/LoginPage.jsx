@@ -1,9 +1,6 @@
-// ============================================================
-//  LoginPage — SmartHire Authentication
-//  Handles Sign In & Sign Up with role selection + OAuth
-// ============================================================
 import { useState, useEffect } from 'react';
 import { useAuth } from '../context/AuthContext';
+import { apiFetch } from '../api/apiClient';
 import './login.css';
 
 const API_BASE = import.meta.env.VITE_API_URL || 'http://localhost:5000';
@@ -96,6 +93,76 @@ export default function LoginPage({ onSuccess }) {
   const [isLoading,   setIsLoading]   = useState(false);
   const [error,       setError]       = useState('');
   const [fieldErrors, setFieldErrors] = useState({});
+
+  // Password Reset Modal State
+  const [showResetModal, setShowResetModal] = useState(false);
+  const [resetStep,       setResetStep]       = useState(1); // 1: Email, 2: Token + New Password
+  const [resetEmail,      setResetEmail]      = useState('');
+  const [resetToken,      setResetToken]      = useState('');
+  const [newPassword,     setNewPassword]     = useState('');
+  const [isResetting,     setIsResetting]     = useState(false);
+  const [resetMsg,        setResetMsg]        = useState('');
+  const [resetErr,        setResetErr]        = useState('');
+
+  const handleRequestReset = async (e) => {
+    e.preventDefault();
+    setResetErr('');
+    setResetMsg('');
+    setIsResetting(true);
+    try {
+      const res = await apiFetch('/api/auth/forgot-password', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email: resetEmail.trim() }),
+      });
+      const data = await res.json();
+      if (res.ok && data.success) {
+        if (data.reset_token) {
+          setResetToken(data.reset_token);
+          setResetMsg('Reset token generated successfully!');
+        } else {
+          setResetMsg(data.message);
+        }
+        setResetStep(2);
+      } else {
+        setResetErr(data.detail || data.message || 'Failed to request password reset.');
+      }
+    } catch (err) {
+      setResetErr(err.message || 'Network error requesting password reset.');
+    } finally {
+      setIsResetting(false);
+    }
+  };
+
+  const handlePerformReset = async (e) => {
+    e.preventDefault();
+    setResetErr('');
+    setResetMsg('');
+    setIsResetting(true);
+    try {
+      const res = await apiFetch('/api/auth/reset-password', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ token: resetToken.trim(), new_password: newPassword }),
+      });
+      const data = await res.json();
+      if (res.ok && data.success) {
+        setResetMsg('Password reset successfully! You can now log in.');
+        setEmail(resetEmail);
+        setTimeout(() => {
+          setShowResetModal(false);
+          setResetStep(1);
+          setResetMsg('');
+        }, 2000);
+      } else {
+        setResetErr(data.detail || data.message || 'Failed to reset password.');
+      }
+    } catch (err) {
+      setResetErr(err.message || 'Network error resetting password.');
+    } finally {
+      setIsResetting(false);
+    }
+  };
 
   // Pick up OAuth error from sessionStorage (set by AuthContext on redirect)
   useEffect(() => {
@@ -279,8 +346,19 @@ export default function LoginPage({ onSuccess }) {
 
           {/* Password */}
           <div className="form-group">
-            <label className="form-label" htmlFor="auth-password">Password</label>
-            <div className="form-input-wrap">
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+              <label className="form-label" htmlFor="auth-password" style={{ marginBottom: 0 }}>Password</label>
+              {tab === 'signin' && (
+                <button
+                  type="button"
+                  onClick={() => setShowResetModal(true)}
+                  style={{ background: 'none', border: 'none', color: 'var(--accent-primary)', fontSize: '0.8rem', cursor: 'pointer', fontWeight: 500 }}
+                >
+                  Forgot Password?
+                </button>
+              )}
+            </div>
+            <div className="form-input-wrap" style={{ marginTop: 6 }}>
               <span className="form-input-icon"><IconLock /></span>
               <input
                 id="auth-password"
@@ -377,6 +455,106 @@ export default function LoginPage({ onSuccess }) {
           }
         </div>
       </div>
+
+      {/* Password Reset Modal */}
+      {showResetModal && (
+        <div style={{
+          position: 'fixed', top: 0, left: 0, right: 0, bottom: 0,
+          background: 'rgba(0,0,0,0.7)', backdropFilter: 'blur(4px)',
+          display: 'flex', alignItems: 'center', justifyContent: 'center',
+          zIndex: 9999, padding: 16
+        }}>
+          <div style={{
+            background: 'var(--bg-card)', border: '1px solid var(--border-medium)',
+            borderRadius: 'var(--radius-lg)', width: '100%', maxWidth: 440, padding: 28,
+            boxShadow: '0 20px 40px rgba(0,0,0,0.4)', position: 'relative'
+          }}>
+            <button
+              onClick={() => { setShowResetModal(false); setResetStep(1); setResetMsg(''); setResetErr(''); }}
+              style={{ position: 'absolute', top: 16, right: 16, background: 'none', border: 'none', color: 'var(--text-muted)', cursor: 'pointer', fontSize: '1.2rem' }}
+            >
+              ✕
+            </button>
+
+            <h3 style={{ fontSize: '1.3rem', fontWeight: 700, marginBottom: 8, color: 'var(--text-primary)' }}>
+              {resetStep === 1 ? '🔑 Reset Your Password' : '🔒 Set New Password'}
+            </h3>
+            <p style={{ fontSize: '0.85rem', color: 'var(--text-secondary)', marginBottom: 20 }}>
+              {resetStep === 1
+                ? 'Enter your registered email address to receive password reset instructions.'
+                : 'Enter your reset token and new password.'}
+            </p>
+
+            {resetErr && (
+              <div style={{ padding: '10px 14px', borderRadius: 'var(--radius-md)', background: 'hsla(0,84%,60%,0.12)', border: '1px solid var(--accent-red)', color: 'var(--accent-red)', fontSize: '0.82rem', marginBottom: 16 }}>
+                {resetErr}
+              </div>
+            )}
+            {resetMsg && (
+              <div style={{ padding: '10px 14px', borderRadius: 'var(--radius-md)', background: 'hsla(142,70%,55%,0.12)', border: '1px solid var(--accent-green)', color: 'var(--accent-green)', fontSize: '0.82rem', marginBottom: 16 }}>
+                {resetMsg}
+              </div>
+            )}
+
+            {resetStep === 1 ? (
+              <form onSubmit={handleRequestReset}>
+                <div className="form-group">
+                  <label className="form-label">Email Address</label>
+                  <input
+                    type="email"
+                    className="form-input"
+                    placeholder="you@example.com"
+                    value={resetEmail}
+                    onChange={e => setResetEmail(e.target.value)}
+                    required
+                  />
+                </div>
+                <button
+                  type="submit"
+                  className="auth-submit-btn"
+                  disabled={isResetting}
+                  style={{ marginTop: 12 }}
+                >
+                  {isResetting ? 'Requesting Token...' : 'Generate Reset Token'}
+                </button>
+              </form>
+            ) : (
+              <form onSubmit={handlePerformReset}>
+                <div className="form-group">
+                  <label className="form-label">Reset Token</label>
+                  <input
+                    type="text"
+                    className="form-input"
+                    placeholder="Paste reset token here"
+                    value={resetToken}
+                    onChange={e => setResetToken(e.target.value)}
+                    required
+                  />
+                </div>
+                <div className="form-group">
+                  <label className="form-label">New Password</label>
+                  <input
+                    type="password"
+                    className="form-input"
+                    placeholder="Min 8 chars, 1 uppercase, 1 symbol"
+                    value={newPassword}
+                    onChange={e => setNewPassword(e.target.value)}
+                    required
+                  />
+                </div>
+                <button
+                  type="submit"
+                  className="auth-submit-btn"
+                  disabled={isResetting}
+                  style={{ marginTop: 12 }}
+                >
+                  {isResetting ? 'Resetting Password...' : 'Confirm Reset Password'}
+                </button>
+              </form>
+            )}
+          </div>
+        </div>
+      )}
     </div>
   );
 }

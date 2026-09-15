@@ -3,10 +3,9 @@
 // ============================================================
 import { useState, useEffect } from 'react';
 import { Play, CheckCircle, Clock, Video, Tag, Award, AlertCircle } from 'lucide-react';
+import { apiFetch } from '../../api/apiClient';
 import InterviewSession from './InterviewSession';
 import InterviewSummary from './InterviewSummary';
-
-const API_BASE = import.meta.env.VITE_API_URL || 'http://localhost:5000';
 
 export default function InterviewRoom() {
   const [assignedSessions, setAssignedSessions] = useState([]);
@@ -21,10 +20,7 @@ export default function InterviewRoom() {
   const fetchAssignedSessions = async () => {
     setLoading(true);
     try {
-      const res = await fetch(`${API_BASE}/api/sessions`, {
-        method: 'GET',
-        credentials: 'include',
-      });
+      const res = await apiFetch('/api/sessions', { method: 'GET' });
       if (res.ok) {
         const data = await res.json();
         setAssignedSessions(data);
@@ -38,10 +34,7 @@ export default function InterviewRoom() {
 
   const handleOpenSession = async (session) => {
     try {
-      const res = await fetch(`${API_BASE}/api/sessions/${session.id}`, {
-        method: 'GET',
-        credentials: 'include',
-      });
+      const res = await apiFetch(`/api/sessions/${session.id}`, { method: 'GET' });
       if (res.ok) {
         const detail = await res.json();
         if (detail.status === 'completed') {

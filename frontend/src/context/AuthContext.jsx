@@ -1,12 +1,7 @@
-// ============================================================
-//  AuthContext — Global authentication state
-//  Stores user, role, token; handles login/logout/restore
-// ============================================================
 import { createContext, useContext, useState, useEffect, useCallback } from 'react';
+import { apiFetch, clearAuthToken } from '../api/apiClient';
 
 const AuthContext = createContext(null);
-
-const API_BASE = import.meta.env.VITE_API_URL || 'http://localhost:5000';
 
 export function AuthProvider({ children }) {
   const [user,            setUser]            = useState(null);
@@ -42,10 +37,7 @@ export function AuthProvider({ children }) {
         window.history.replaceState({}, '', window.location.pathname);
       }
 
-      const res = await fetch(`${API_BASE}/api/auth/me`, {
-        method:      'GET',
-        credentials: 'include',   // send cookie
-      });
+      const res = await apiFetch('/api/auth/me', { method: 'GET' });
       if (res.ok) {
         const data = await res.json();
         const returnedUser = data.user;
@@ -69,11 +61,10 @@ export function AuthProvider({ children }) {
   // ── Login ──
   const login = useCallback(async (email, password) => {
     console.log('[AuthContext] Executing login for:', email);
-    const res = await fetch(`${API_BASE}/api/auth/login`, {
-      method:      'POST',
-      credentials: 'include',
-      headers:     { 'Content-Type': 'application/json' },
-      body:        JSON.stringify({ email, password }),
+    const res = await apiFetch('/api/auth/login', {
+      method:  'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body:    JSON.stringify({ email, password }),
     });
     const data = await res.json();
     console.log('[AuthContext] Login API Response:', data);
@@ -94,11 +85,10 @@ export function AuthProvider({ children }) {
   // ── Register ──
   const register = useCallback(async (name, email, password, role) => {
     console.log('[AuthContext] Registering user with role:', role);
-    const res = await fetch(`${API_BASE}/api/auth/register`, {
-      method:      'POST',
-      credentials: 'include',
-      headers:     { 'Content-Type': 'application/json' },
-      body:        JSON.stringify({ name, email, password, role }),
+    const res = await apiFetch('/api/auth/register', {
+      method:  'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body:    JSON.stringify({ name, email, password, role }),
     });
     const data = await res.json();
     console.log('[AuthContext] Register API Response:', data);
@@ -122,10 +112,9 @@ export function AuthProvider({ children }) {
   // ── Logout ──
   const logout = useCallback(async () => {
     try {
-      await fetch(`${API_BASE}/api/auth/logout`, {
-        method: 'POST', credentials: 'include',
-      });
+      await apiFetch('/api/auth/logout', { method: 'POST' });
     } catch (_err) { /* ignore */ }
+    clearAuthToken();
     setUser(null);
     setIsAuthenticated(false);
   }, []);
@@ -140,6 +129,7 @@ export function AuthProvider({ children }) {
     login,
     register,
     logout,
+    apiFetch,
   };
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;

@@ -16,7 +16,15 @@ def hash_password(plain: str) -> str:
 
 
 def verify_password(plain: str, hashed: str) -> bool:
-    return bcrypt.checkpw(plain.encode("utf-8"), hashed.encode("utf-8"))
+    if not plain or not hashed:
+        return False
+    try:
+        hashed_bytes = hashed.strip().encode("utf-8")
+        plain_bytes = plain.encode("utf-8")
+        return bcrypt.checkpw(plain_bytes, hashed_bytes)
+    except Exception as exc:
+        print(f"[Security] verify_password error: {exc}")
+        return False
 
 
 # JWT helpers

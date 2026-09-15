@@ -46,15 +46,20 @@ app = FastAPI(
 )
 
 # ── CORS ────────────────────────────────────────────────────
+frontend_url_clean = settings.FRONTEND_URL.rstrip('/')
+allowed_origins = list(set([
+    frontend_url_clean,
+    f"{frontend_url_clean}/",
+    "https://neon-cannoli-d7aebc.netlify.app",
+    "http://localhost:5173",
+    "http://127.0.0.1:5173",
+    "http://localhost:5000",
+]))
+
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=[
-        settings.FRONTEND_URL,
-        "http://localhost:5173",
-        "http://127.0.0.1:5173",
-        "http://localhost:5000",
-    ],
-    allow_credentials=True,            # Required for cookies
+    allow_origins=allowed_origins,
+    allow_credentials=True,            # Required for cookies and auth headers
     allow_methods=["*"],
     allow_headers=["*"],
 )

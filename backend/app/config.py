@@ -35,10 +35,9 @@ class Settings(BaseSettings):
     GITHUB_CLIENT_SECRET: str = ""
 
     # AI Service Settings
-    AI_PROVIDER: str = "gemini" # gemini, openai, ollama
+    AI_PROVIDER: str = "gemini" # gemini, openai
     GEMINI_API_KEY: str = ""
     OPENAI_API_KEY: str = ""
-    OLLAMA_BASE_URL: str = "http://localhost:11434"
 
 
 settings = Settings()

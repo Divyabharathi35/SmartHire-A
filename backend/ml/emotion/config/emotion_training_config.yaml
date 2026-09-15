@@ -1,0 +1,44 @@
+# ============================================================
+#  emotion_training_config.yaml — Emotion Model Training Config
+# ============================================================
+
+dataset:
+  name: "FER-2013"
+  raw_dir: "backend/ml/emotion/datasets/raw"
+  processed_dir: "backend/ml/emotion/datasets/processed"
+  summary_file: "backend/ml/emotion/datasets/dataset_summary.json"
+  supported_formats: ["folders", "csv"]
+  test_split: 0.15
+  val_split: 0.15
+  random_seed: 42
+
+preprocessing:
+  image_size: [48, 48]  # width, height
+  num_channels: 1       # 1 for Grayscale, 3 for RGB
+  normalize_mean: [0.5]
+  normalize_std: [0.5]
+  augmentation:
+    enabled: true
+    random_rotation_degrees: 10
+    random_horizontal_flip: true
+    brightness_factor: 0.15
+    translation_fraction: 0.05
+
+model:
+  architecture: "EmotionCNN" # Options: EmotionCNN, MobileNetV3_Small, EfficientNetB0
+  num_classes: 7
+  class_labels: ["angry", "disgust", "fear", "happy", "neutral", "sad", "surprise"]
+  dropout_rate: 0.3
+  export_path: "backend/ml/emotion/models/best_emotion_model.pt"
+  metadata_path: "backend/ml/emotion/models/model_metadata.json"
+  class_mapping_path: "backend/ml/emotion/models/class_mapping.json"
+
+training:
+  batch_size: 64
+  epochs: 30
+  learning_rate: 0.001
+  weight_decay: 0.0001
+  early_stopping_patience: 5
+  checkpoint_dir: "backend/ml/emotion/checkpoints"
+  logs_dir: "backend/ml/emotion/logs"
+  save_best_only: true

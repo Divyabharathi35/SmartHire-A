@@ -1,13 +1,13 @@
 import {
   Sparkles, FileText, Video, BarChart2, Clock, TrendingUp,
-  Users, FileSearch, GitCompare, Layout, MonitorPlay,
+  Users, FileSearch, GitCompare, Layout, MonitorPlay, Trophy,
   UserCog, Settings, Activity, Bot, Globe, LayoutDashboard, UserCheck
 } from 'lucide-react';
 
 const navConfig = {
   candidate: [
     { id: 'interview', label: 'Interview Room',       icon: Video,   badge: 'Live' },
-    { id: 'generator', label: 'AI Practice Generator', icon: Sparkles, badge: 'AI' },
+    { id: 'mock',      label: 'Mock Interview',       icon: Sparkles, badge: 'Practice' },
     { id: 'history',   label: 'Interview History',    icon: Clock },
     { id: 'resume',    label: 'Resume Upload',       icon: FileText },
     { id: 'analytics', label: 'Performance Analytics',icon: BarChart2 },
@@ -17,9 +17,11 @@ const navConfig = {
   recruiter: [
     { id: 'generator',  label: 'AI Interview Generator', icon: Sparkles, badge: 'AI' },
     { id: 'overview',   label: 'Candidate Overview',  icon: Users },
+    { id: 'ranking',    label: 'Candidate Ranking',   icon: Trophy },
     { id: 'reports',    label: 'Candidate Reports',   icon: FileSearch },
     { id: 'comparison', label: 'Comparison Dashboard',icon: GitCompare },
     { id: 'builder',    label: 'Template Builder',    icon: Layout },
+    { id: 'analytics',  label: 'Performance & Analytics', icon: BarChart2 },
     { id: 'sessions',   label: 'Active Sessions',     icon: MonitorPlay, badge: '4' },
   ],
   admin: [
@@ -80,7 +82,7 @@ export default function Sidebar({ role, activeTab, onTabChange }) {
             AI-Powered Platform
           </p>
           <p style={{ fontSize: '0.72rem', color: 'var(--text-muted)', lineHeight: 1.5 }}>
-            Powered by Gemini 2.0 &amp; advanced ML models
+            Powered by Gemini 3.6 Flash &amp; advanced ML models
           </p>
         </div>
       </div>

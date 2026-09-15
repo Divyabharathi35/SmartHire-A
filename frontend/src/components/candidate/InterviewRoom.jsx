@@ -110,8 +110,29 @@ export default function InterviewRoom() {
           </h3>
 
           {assignedSessions.map((item) => {
-            const isCompleted = item.status === 'completed';
-            const isInProgress = item.status === 'in_progress';
+            const itemStatus = (item.status || '').toLowerCase();
+            let badgeLabel = 'Pending Interview';
+            let badgeBg = 'hsla(252,100%,68%,0.12)';
+            let badgeColor = 'var(--accent-primary)';
+
+            if (itemStatus === 'completed') {
+              badgeLabel = 'Completed';
+              badgeBg = 'hsla(142,70%,55%,0.12)';
+              badgeColor = 'var(--accent-green)';
+            } else if (itemStatus === 'in_progress' || itemStatus === 'in progress') {
+              badgeLabel = 'In Progress';
+              badgeBg = 'hsla(38,95%,60%,0.12)';
+              badgeColor = 'var(--accent-amber)';
+            } else if (itemStatus === 'paused') {
+              badgeLabel = 'Paused';
+              badgeBg = 'hsla(38,95%,60%,0.12)';
+              badgeColor = 'var(--accent-amber)';
+            } else if (itemStatus === 'cancelled' || itemStatus === 'expired') {
+              badgeLabel = itemStatus === 'cancelled' ? 'Cancelled' : 'Expired';
+              badgeBg = 'hsla(0,84%,60%,0.12)';
+              badgeColor = 'var(--accent-rose)';
+            }
+
             return (
               <div key={item.id} className="card" style={{ padding: '20px', borderRadius: 'var(--radius-md)', background: 'var(--bg-card)', border: '1px solid var(--border-subtle)' }}>
                 <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: 16 }}>
@@ -119,48 +140,83 @@ export default function InterviewRoom() {
                     <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 4 }}>
                       <span style={{
                         fontSize: '0.72rem', padding: '2px 8px', borderRadius: 'var(--radius-sm)', fontWeight: 600,
-                        background: isCompleted ? 'hsla(142,70%,55%,0.12)' : isInProgress ? 'hsla(38,95%,60%,0.12)' : 'hsla(252,100%,68%,0.12)',
-                        color: isCompleted ? 'var(--accent-green)' : isInProgress ? 'var(--accent-amber)' : 'var(--accent-primary)'
+                        background: badgeBg,
+                        color: badgeColor
                       }}>
-                        {isCompleted ? 'Completed' : isInProgress ? 'In Progress' : 'Pending Interview'}
+                        {badgeLabel}
                       </span>
                       <span style={{ fontSize: '0.78rem', color: 'var(--text-muted)' }}>
-                        Difficulty: {item.difficulty}
+                        Difficulty: {item.difficulty || 'Medium'}
                       </span>
                     </div>
 
                     <h4 style={{ fontSize: '1.1rem', fontWeight: 600, color: 'var(--text-primary)', marginBottom: 4 }}>
-                      {item.job_role}
+                      {item.job_role || 'Interview Session'}
                     </h4>
 
                     <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap', fontSize: '0.78rem', color: 'var(--text-muted)' }}>
-                      <span><Tag size={10} style={{ display: 'inline', marginRight: 4 }} />Domain: {item.domain}</span>
-                      <span>Type: {item.interview_type}</span>
-                      <span>Questions: {item.num_questions}</span>
+                      <span><Tag size={10} style={{ display: 'inline', marginRight: 4 }} />Domain: {item.domain || 'General'}</span>
+                      <span>Type: {item.interview_type || 'Technical'}</span>
+                      {item.num_questions && <span>Questions: {item.num_questions}</span>}
                     </div>
                   </div>
 
-                  <button
-                    onClick={() => handleOpenSession(item)}
-                    style={{
-                      padding: '10px 22px', borderRadius: 'var(--radius-md)',
-                      background: isCompleted ? 'var(--bg-elevated)' : 'linear-gradient(135deg, var(--accent-primary), var(--accent-secondary))',
-                      border: isCompleted ? '1px solid var(--border-medium)' : 'none',
-                      color: isCompleted ? 'var(--text-primary)' : '#fff',
-                      fontWeight: 600, cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 8, fontSize: '0.9rem',
-                      boxShadow: isCompleted ? 'none' : 'var(--shadow-glow)'
-                    }}
-                  >
-                    {isCompleted ? (
-                      <><Award size={16} /> View Results</>
-                    ) : (
-                      <><Play size={16} /> {isInProgress ? 'Resume Interview' : 'Start Interview'}</>
-                    )}
-                  </button>
+                  {itemStatus === 'completed' ? (
+                    <button
+                      onClick={() => handleOpenSession(item)}
+                      style={{
+                        padding: '10px 22px', borderRadius: 'var(--radius-md)',
+                        background: 'var(--bg-elevated)', border: '1px solid var(--border-medium)',
+                        color: 'var(--text-primary)', fontWeight: 600, cursor: 'pointer',
+                        display: 'flex', alignItems: 'center', gap: 8, fontSize: '0.9rem'
+                      }}
+                    >
+                      <Award size={16} /> View Report
+                    </button>
+                  ) : itemStatus === 'in_progress' || itemStatus === 'in progress' || itemStatus === 'paused' ? (
+                    <button
+                      onClick={() => handleOpenSession(item)}
+                      style={{
+                        padding: '10px 22px', borderRadius: 'var(--radius-md)',
+                        background: 'linear-gradient(135deg, var(--accent-primary), var(--accent-secondary))',
+                        border: 'none', color: '#fff', fontWeight: 600, cursor: 'pointer',
+                        display: 'flex', alignItems: 'center', gap: 8, fontSize: '0.9rem',
+                        boxShadow: 'var(--shadow-glow)'
+                      }}
+                    >
+                      <Play size={16} /> Continue Interview
+                    </button>
+                  ) : itemStatus === 'cancelled' || itemStatus === 'expired' ? (
+                    <button
+                      disabled
+                      style={{
+                        padding: '10px 22px', borderRadius: 'var(--radius-md)',
+                        background: 'var(--bg-elevated)', border: '1px solid var(--border-subtle)',
+                        color: 'var(--text-muted)', fontWeight: 500, cursor: 'not-allowed',
+                        display: 'flex', alignItems: 'center', gap: 8, fontSize: '0.9rem', opacity: 0.7
+                      }}
+                    >
+                      Unavailable
+                    </button>
+                  ) : (
+                    <button
+                      onClick={() => handleOpenSession(item)}
+                      style={{
+                        padding: '10px 22px', borderRadius: 'var(--radius-md)',
+                        background: 'linear-gradient(135deg, var(--accent-primary), var(--accent-secondary))',
+                        border: 'none', color: '#fff', fontWeight: 600, cursor: 'pointer',
+                        display: 'flex', alignItems: 'center', gap: 8, fontSize: '0.9rem',
+                        boxShadow: 'var(--shadow-glow)'
+                      }}
+                    >
+                      <Play size={16} /> Start Interview
+                    </button>
+                  )}
                 </div>
               </div>
             );
           })}
+
         </div>
       )}
     </div>

@@ -20,6 +20,8 @@ CREATE TABLE IF NOT EXISTS interview_question_timings (
   created_at      TIMESTAMPTZ   NOT NULL DEFAULT NOW()
 );
 
+ALTER TABLE interview_question_timings ADD COLUMN IF NOT EXISTS question_number INT DEFAULT 1;
+
 -- Ensure indexes for fast lookups
 CREATE INDEX IF NOT EXISTS idx_question_timings_session_id  ON interview_question_timings (session_id);
 CREATE INDEX IF NOT EXISTS idx_question_timings_question_id ON interview_question_timings (question_id);

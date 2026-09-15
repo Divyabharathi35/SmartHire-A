@@ -8,20 +8,24 @@ import { AuthProvider, useAuth } from './context/AuthContext';
 import LoginPage from './pages/LoginPage';
 import Header    from './components/layout/Header';
 import Sidebar   from './components/layout/Sidebar';
+import ErrorBoundary from './components/common/ErrorBoundary';
 
 // Candidate
 import InterviewGenerator from './components/candidate/InterviewGenerator';
 import ResumeUpload       from './components/candidate/ResumeUpload';
 import InterviewRoom      from './components/candidate/InterviewRoom';
+import MockInterview      from './components/candidate/MockInterview';
 import Analytics          from './components/candidate/Analytics';
 import InterviewHistory   from './components/candidate/InterviewHistory';
 import ImprovementTracker from './components/candidate/ImprovementTracker';
 
 // Recruiter
 import CandidateOverview   from './components/recruiter/CandidateOverview';
+import CandidateRanking    from './components/recruiter/CandidateRanking';
 import CandidateReports    from './components/recruiter/CandidateReports';
 import ComparisonDashboard from './components/recruiter/ComparisonDashboard';
 import TemplateBuilder     from './components/recruiter/TemplateBuilder';
+import RecruiterAnalytics  from './components/recruiter/RecruiterAnalytics';
 import ActiveSessions      from './components/recruiter/ActiveSessions';
 
 // Admin
@@ -38,7 +42,7 @@ const defaultTabs = { candidate: 'interview', recruiter: 'generator', admin: 'ov
 
 const candidateViews = {
   interview: InterviewRoom,
-  generator: InterviewGenerator,
+  mock:      MockInterview,
   history:   InterviewHistory,
   resume:    ResumeUpload,
   analytics: Analytics,
@@ -48,9 +52,11 @@ const candidateViews = {
 const recruiterViews = {
   generator:  InterviewGenerator,
   overview:   CandidateOverview,
+  ranking:    CandidateRanking,
   reports:    CandidateReports,
   comparison: ComparisonDashboard,
   builder:    TemplateBuilder,
+  analytics:  RecruiterAnalytics,
   sessions:   ActiveSessions,
 };
 
@@ -115,14 +121,19 @@ function Dashboard() {
   }
 
   const views = viewsByRole[activeRole];
-  const activeTab = tabs[activeRole] || defaultTabs[activeRole];
+  const requestedTab = tabs[activeRole];
+  const activeTab = (views && views[requestedTab]) ? requestedTab : defaultTabs[activeRole];
   const ActiveView = views[activeTab] || views[defaultTabs[activeRole]];
 
   console.log('[App Router Debug] Redirected Route Target -> Role:', activeRole, '| Active Tab:', activeTab, '| Rendering Component:', ActiveView?.name);
 
   const handleTabChange = (tab) => {
-    console.log('[App Router Debug] Switching tab for role', activeRole, 'to:', tab);
-    setTabs(t => ({ ...t, [activeRole]: tab }));
+    if (views && views[tab]) {
+      console.log('[App Router Debug] Switching tab for role', activeRole, 'to:', tab);
+      setTabs(t => ({ ...t, [activeRole]: tab }));
+    } else {
+      console.warn('[App Router Debug] Blocked unauthorized tab request for role', activeRole, '-> tab:', tab);
+    }
   };
 
   return (
@@ -131,7 +142,9 @@ function Dashboard() {
       <div className="app-body">
         <Sidebar role={activeRole} activeTab={activeTab} onTabChange={handleTabChange} />
         <main className="main-content" id="main-content">
-          <ActiveView key={`${activeRole}-${activeTab}`} onTabChange={handleTabChange} />
+          <ErrorBoundary key={`${activeRole}-${activeTab}`}>
+            <ActiveView key={`${activeRole}-${activeTab}`} onTabChange={handleTabChange} />
+          </ErrorBoundary>
         </main>
       </div>
     </div>

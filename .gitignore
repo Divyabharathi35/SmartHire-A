@@ -1,17 +1,34 @@
+# Environment and Secrets
 .env
 backend/.env
 frontend/.env
+kaggle.json
+.kaggle/
+backend/ml/emotion/.env
 
+# Python & Virtual Environments
 __pycache__/
 *.pyc
-
 .venv/
+venv/
+*.egg-info/
 
+# Frontend Build
 node_modules/
 dist/
-__pycache__/
-*.pyc
-.env
-backend/.env
 
+# Uploads & User Data
 backend/uploads/
+
+# ML Datasets & Models (Kaggle Pipeline)
+backend/ml/emotion/datasets/raw/
+backend/ml/emotion/datasets/processed/
+backend/ml/emotion/datasets/*.json
+backend/ml/emotion/models/*.pt
+backend/ml/emotion/models/*.pth
+backend/ml/emotion/models/*.onnx
+backend/ml/emotion/models/*.h5
+backend/ml/emotion/models/*.keras
+backend/ml/emotion/models/evaluation_results.json
+backend/ml/emotion/checkpoints/
+backend/ml/emotion/logs/

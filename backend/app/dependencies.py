@@ -4,7 +4,7 @@
 from typing import Annotated
 
 import asyncpg
-from fastapi import Cookie, Depends, Header, HTTPException, status
+from fastapi import Cookie, Depends, Header, HTTPException, Query, status
 from jose import JWTError
 
 from app.database import get_db
@@ -14,10 +14,11 @@ from app.security import decode_access_token
 async def get_current_user(
     smarthire_token: Annotated[str | None, Cookie()] = None,
     authorization:   Annotated[str | None, Header()] = None,
+    token:           Annotated[str | None, Query()] = None,
     db: asyncpg.Connection = Depends(get_db),
 ):
     """
-    Extracts JWT from HTTP-only cookie (preferred) or Authorization header.
+    Extracts JWT from HTTP-only cookie (preferred), Authorization header, or URL query token parameter.
     Returns the authenticated user record.
     """
     credentials_exception = HTTPException(
@@ -30,16 +31,16 @@ async def get_current_user(
         detail="Session expired. Please log in again.",
     )
 
-    # Resolve token
-    token = smarthire_token
-    if not token and authorization and authorization.startswith("Bearer "):
-        token = authorization.split(" ", 1)[1]
+    # Resolve token from Cookie, Query parameter, or Bearer Header
+    jwt_token = smarthire_token or token
+    if not jwt_token and authorization and authorization.startswith("Bearer "):
+        jwt_token = authorization.split(" ", 1)[1]
 
-    if not token:
+    if not jwt_token:
         raise credentials_exception
 
     try:
-        payload = decode_access_token(token)
+        payload = decode_access_token(jwt_token)
         user_id: str = payload.get("id")
         if not user_id:
             raise credentials_exception

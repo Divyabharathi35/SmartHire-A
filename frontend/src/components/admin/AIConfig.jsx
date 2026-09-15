@@ -10,8 +10,7 @@ export default function AIConfig() {
   const [provider, setProvider]               = useState('gemini');
   const [geminiKey, setGeminiKey]             = useState('');
   const [openaiKey, setOpenaiKey]             = useState('');
-  const [ollamaUrl, setOllamaUrl]             = useState('http://localhost:11434');
-  const [defaultModel, setDefaultModel]       = useState('gemini-3.5-flash');
+  const [defaultModel, setDefaultModel]       = useState('gemini-3.6-flash');
   const [temperature, setTemperature]         = useState(0.7);
   const [maxTokens, setMaxTokens]             = useState(2048);
   const [enableGeneration, setEnableGeneration] = useState(true);
@@ -40,7 +39,6 @@ export default function AIConfig() {
         if (data.ai_provider) setProvider(data.ai_provider);
         if (data.gemini_api_key) setGeminiKey(data.gemini_api_key);
         if (data.openai_api_key) setOpenaiKey(data.openai_api_key);
-        if (data.ollama_base_url) setOllamaUrl(data.ollama_base_url);
         if (data.default_model) setDefaultModel(data.default_model);
         if (data.temperature !== undefined) setTemperature(data.temperature);
         if (data.max_tokens !== undefined) setMaxTokens(data.max_tokens);
@@ -67,7 +65,6 @@ export default function AIConfig() {
           ai_provider: provider,
           gemini_api_key: geminiKey,
           openai_api_key: openaiKey,
-          ollama_base_url: ollamaUrl,
           default_model: defaultModel,
           temperature: parseFloat(temperature),
           max_tokens: parseInt(maxTokens, 10),
@@ -156,9 +153,7 @@ export default function AIConfig() {
                 onChange={e => setProvider(e.target.value)}
                 style={{ width: '100%', padding: '12px', background: 'var(--bg-input)' }}
               >
-                <option value="gemini">Google Gemini API (Recommended)</option>
-                <option value="openai">OpenAI (GPT-3.5 / GPT-4)</option>
-                <option value="ollama">Ollama (Local LLaMA 3)</option>
+                <option value="gemini">Google Gemini API (Gemini 3.6 Flash)</option>
               </select>
             </div>
 

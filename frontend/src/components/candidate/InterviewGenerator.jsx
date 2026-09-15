@@ -159,11 +159,14 @@ export default function InterviewGenerator({ onSessionStart }) {
       setGeneratedQuestions(questions);
       return questions;
     } catch (err) {
-
       console.error('[AI Question Generator] Error during question generation:', err);
-      const friendlyMsg = err.message === 'Failed to fetch'
-        ? `Failed to connect to backend AI server (${API_BASE}). Please check if FastAPI server is running.`
-        : (err.message || 'Error generating questions');
+      let friendlyMsg = err.message || 'Error generating questions';
+      if (err.message === 'Failed to fetch') {
+        friendlyMsg = `Failed to connect to backend AI server (${API_BASE}). Please check if FastAPI server is running.`;
+      }
+      // The backend now returns specific, safe error categories in the detail field.
+      // Display the backend message directly — it never contains secrets.
+      // No longer override with a generic "AI service temporarily unavailable" message.
       setError(friendlyMsg);
       throw new Error(friendlyMsg);
     } finally {

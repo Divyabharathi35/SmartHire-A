@@ -218,7 +218,7 @@ export const aiPersonalities = [
 ];
 
 export const aiProviders = [
-  { id: 'gemini', label: 'Google Gemini 2.0', badge: 'Recommended', icon: '✦' },
+  { id: 'gemini', label: 'Google Gemini 3.6 Flash', badge: 'Recommended', icon: '✦' },
   { id: 'gpt4', label: 'OpenAI GPT-4o', badge: 'Stable', icon: '◆' },
   { id: 'claude', label: 'Anthropic Claude 3.5', badge: 'Creative', icon: '◈' },
 ];

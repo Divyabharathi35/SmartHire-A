@@ -8,11 +8,8 @@ from fastapi.middleware.cors import CORSMiddleware
 
 from app.config import settings
 from app.database import close_pool, get_pool
-from app.routers import admin, auth, interviews, oauth, users
-
-
-
-
+from app.routers import admin, analysis, auth, interviews, notifications, oauth, users
+from app.services.emotion_service import EmotionService
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
@@ -20,6 +17,18 @@ async def lifespan(app: FastAPI):
     print("[SmartHire] API starting...")
     pool = await get_pool()
     print("[SmartHire] PostgreSQL connected successfully")
+    try:
+        from apply_migrations import main as run_migrations
+        await run_migrations()
+    except Exception as e:
+        print(f"[SmartHire] Startup migration check warning: {e}")
+
+    # Initialize PyTorch Emotion Service
+    try:
+        EmotionService.initialize()
+    except Exception as e:
+        print(f"[SmartHire] PyTorch Emotion Service startup warning: {e}")
+
     yield
     # Shutdown: close pool
     await close_pool()
@@ -55,7 +64,9 @@ app.include_router(auth.router)
 app.include_router(oauth.router)
 app.include_router(users.router)
 app.include_router(interviews.router)
+app.include_router(notifications.router)
 app.include_router(admin.router)
+app.include_router(analysis.router, prefix="/api")
 
 
 

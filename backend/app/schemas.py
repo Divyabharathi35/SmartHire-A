@@ -3,10 +3,10 @@
 # ============================================================
 from datetime import datetime
 from enum import Enum
-from typing import Optional
+from typing import Optional, List, Dict, Any
 from uuid import UUID
 
-from pydantic import BaseModel, EmailStr, field_validator
+from pydantic import BaseModel, EmailStr, Field, field_validator
 
 
 class UserRole(str, Enum):
@@ -143,6 +143,74 @@ class CreateSessionRequest(BaseModel):
     resume_text: Optional[str] = None
     candidate_id: Optional[UUID] = None
     questions: Optional[list[dict]] = None
+    is_mock: bool = False
+
+
+# ── Mock Interview Dedicated Schemas ─────────────────────────────
+
+class CreateMockSessionRequest(BaseModel):
+    job_role: str = "Software Developer"
+    domain: str = "Software Development"
+    interview_type: str = "Technical Interview"
+    difficulty: str = "Medium"
+    experience_level: Optional[str] = "Mid Level"
+    num_questions: int = 5
+    user_skills: Optional[str] = None
+
+
+class MockQuestionResponse(BaseModel):
+    id: UUID
+    session_id: UUID
+    question_number: int
+    question_text: str
+    interview_type: str
+    domain: str
+    difficulty: str
+    user_answer: Optional[str] = None
+
+    model_config = {"from_attributes": True}
+
+
+class MockSessionResponse(BaseModel):
+    id: UUID
+    user_id: UUID
+    job_role: str
+    domain: str
+    interview_type: str
+    difficulty: str
+    experience_level: Optional[str] = None
+    num_questions: int
+    total_questions: int
+    completed_questions: int
+    current_question_index: int = 0
+    status: str
+    is_mock: bool = True
+    started_at: Optional[datetime] = None
+    ended_at: Optional[datetime] = None
+    duration: Optional[int] = 0
+    created_at: datetime
+    updated_at: datetime
+    questions: Optional[list[MockQuestionResponse]] = None
+
+    model_config = {"from_attributes": True}
+
+
+class MockSessionHistoryResponse(BaseModel):
+    id: UUID
+    job_role: str
+    domain: str
+    interview_type: str
+    difficulty: str
+    num_questions: int
+    completed_questions: int
+    status: str
+    is_mock: bool = True
+    duration: Optional[int] = 0
+    created_at: datetime
+    started_at: Optional[datetime] = None
+    ended_at: Optional[datetime] = None
+
+    model_config = {"from_attributes": True}
 
 
 class CandidateUserResponse(BaseModel):
@@ -242,6 +310,7 @@ class SessionResponse(BaseModel):
     total_questions: int
     completed_questions: int
     current_question_index: Optional[int] = 0
+    is_mock: bool = False
     started_at: Optional[datetime] = None
     paused_at: Optional[datetime] = None
     resumed_at: Optional[datetime] = None
@@ -272,6 +341,9 @@ class InterviewResultResponse(BaseModel):
     technical_score: Optional[float] = None
     communication_score: Optional[float] = None
     behavioral_score: Optional[float] = None
+    technical_relevance_score: Optional[float] = None
+    confidence_score: Optional[float] = None
+    professionalism_score: Optional[float] = None
     aptitude_score: Optional[float] = None
     problem_solving_score: Optional[float] = None
     culture_fit_score: Optional[float] = None
@@ -281,10 +353,20 @@ class InterviewResultResponse(BaseModel):
     logical_reasoning_score: Optional[float] = None
     quantitative_score: Optional[float] = None
     overall_score: float
+    performance_rating: Optional[str] = None
     recommendation: Optional[str] = None
-    completed_at: datetime
-    created_at: datetime
-    updated_at: datetime
+    strengths: Optional[Any] = None
+    weaknesses: Optional[Any] = None
+    improvement_suggestions: Optional[Any] = None
+    practice_recommendations: Optional[Any] = None
+    learning_resources: Optional[Any] = None
+    feedback_status: Optional[str] = None
+    ai_provider: Optional[str] = None
+    ai_model: Optional[str] = None
+    feedback_generated_at: Optional[datetime] = None
+    completed_at: Optional[datetime] = None
+    created_at: Optional[datetime] = None
+    updated_at: Optional[datetime] = None
 
     model_config = {"from_attributes": True}
 
@@ -313,6 +395,10 @@ class RecruiterAnalyticsResponse(BaseModel):
     pending_interviews: int
     average_score: float
     average_duration: int
+    performance_trends: Optional[List[Dict[str, Any]]] = None
+    skill_analytics: Optional[List[Dict[str, Any]]] = None
+    shortlisting_insights: Optional[Dict[str, Any]] = None
+    shortlisted_candidates: Optional[List[Dict[str, Any]]] = None
 
 
 class RecruiterCandidateInterviewResponse(BaseModel):
@@ -355,7 +441,269 @@ class AudioAnswerResponse(BaseModel):
     model_config = {"from_attributes": True}
 
 
+# ── Speech, Communication & Behavior Module Schemas ─────────────────────
+
+class SubmitTranscriptRequest(BaseModel):
+    question_id: UUID
+    question_number: int
+    transcript: str
+    duration: int = 0
+    word_count: int = 0
 
 
+class TranscriptResponse(BaseModel):
+    id: UUID
+    session_id: UUID
+    question_id: UUID
+    candidate_id: Optional[UUID] = None
+    question_number: int
+    transcript: str
+    duration: int
+    word_count: int
+    created_at: datetime
 
+    model_config = {"from_attributes": True}
+
+
+class SubmitCommunicationAnalysisRequest(BaseModel):
+    question_id: UUID
+    question_number: int
+    transcript: str
+    duration: int = 0
+    confidence_score: Optional[float] = None
+
+
+class SpeechPaceDetails(BaseModel):
+    words_per_minute: Optional[float] = None
+    duration_minutes: Optional[float] = None
+    total_words: int = 0
+    pace_category: str = "Insufficient Data"
+    status: str = "Insufficient Data"  # "Calculated" or "Insufficient Data"
+
+
+class FillerWordsDetails(BaseModel):
+    count: int = 0
+    percentage: float = 0.0
+    detected_words: list[str] = []
+
+
+class GrammarDetails(BaseModel):
+    score: Optional[float] = None
+    error_count: int = 0
+    feedback: str = "Insufficient Data"
+    status: str = "Evaluated"  # "Evaluated" or "Insufficient Data"
+
+
+class OverallCommunicationQualityDetails(BaseModel):
+    score: Optional[float] = None
+    confidence_level: str = "Low"
+    summary: str = "Insufficient Data"
+
+
+class CommunicationAnalysisResponse(BaseModel):
+    id: UUID
+    session_id: UUID
+    question_id: UUID
+    candidate_id: Optional[UUID] = None
+    transcript_id: Optional[UUID] = None
+    grammar_score: Optional[float] = None
+    grammar_error_count: int = 0
+    grammar_feedback: str = "Insufficient Data"
+    filler_word_count: int = 0
+    filler_words_per_minute: float = 0.0
+    filler_rate: float = 0.0
+    filler_words_list: list[str] = []
+    words_per_minute: Optional[float] = None
+    speaking_duration: int = 0
+    word_count: int = 0
+    pace_category: str = "Insufficient Data"
+    pronunciation_score: Optional[float] = None
+    pronunciation_status: str = "Insufficient Data"
+    pronunciation_feedback: str = "Insufficient Data"
+    communication_score: Optional[float] = None
+    feedback: str = "Insufficient Data"
+    strengths: list[str] = []
+    weaknesses: list[str] = []
+    speech_pace: Optional[SpeechPaceDetails] = None
+    filler_words: Optional[FillerWordsDetails] = None
+    grammar: Optional[GrammarDetails] = None
+    overall_communication_quality: Optional[OverallCommunicationQualityDetails] = None
+    created_at: datetime
+
+    model_config = {"from_attributes": True}
+
+
+class SubmitBehaviorAnalysisRequest(BaseModel):
+    eye_contact_percentage: float = 75.0
+    looking_away_duration: int = 0
+    attention_breaks: int = 0
+    eye_contact_status: str = "Available"
+    observed_emotion: Optional[str] = "Neutral / Engaged"
+    confidence_indicator: Optional[str] = "Moderate Observed Confidence"
+    engagement_score: float = 80.0
+    engagement_summary: Optional[str] = ""
+    behavior_events: list[dict] = []
+
+
+class BehaviorAnalysisResponse(BaseModel):
+    id: UUID
+    session_id: UUID
+    candidate_id: Optional[UUID] = None
+    eye_contact_percentage: float
+    looking_away_duration: int
+    attention_breaks: int
+    eye_contact_status: str
+    observed_emotion: str
+    confidence_indicator: str
+    engagement_score: float
+    engagement_summary: str
+    behavior_score: float
+    behavior_events: list[dict] = []
+    feedback: str
+    created_at: datetime
+
+    model_config = {"from_attributes": True}
+
+
+# ── Proctoring & Interview Integrity Schemas ─────────────────────────
+
+class IntegrityEventCreate(BaseModel):
+    event_type: str
+    severity: str = "LOW"  # LOW, MEDIUM, HIGH, CRITICAL
+    message: str
+    timestamp: Optional[datetime] = None
+    duration: int = 0
+    metadata: dict = {}
+
+
+class BatchIntegrityEventsRequest(BaseModel):
+    events: list[IntegrityEventCreate]
+
+
+class IntegrityEventResponse(BaseModel):
+    id: UUID
+    session_id: UUID
+    event_type: str
+    severity: str
+    message: str
+    timestamp: datetime
+    duration: int
+    metadata: dict = {}
+    created_at: datetime
+
+    model_config = {"from_attributes": True}
+
+
+class SubmitProctoringSummaryRequest(BaseModel):
+    face_verification_status: str = "PASSED"
+    face_presence_percentage: float = 100.0
+    multiple_face_count: int = 0
+    looking_away_count: int = 0
+    looking_away_duration: int = 0
+    tab_switch_count: int = 0
+    fullscreen_exit_count: int = 0
+    screen_share_stop_count: int = 0
+    possible_phone_count: int = 0
+    camera_disconnect_count: int = 0
+    mic_disconnect_count: int = 0
+    suspicious_event_count: int = 0
+    integrity_score: Optional[float] = None
+
+
+class ProctoringSummaryResponse(BaseModel):
+    id: UUID
+    session_id: UUID
+    face_verification_status: str
+    face_presence_percentage: float
+    multiple_face_count: int
+    looking_away_count: int
+    looking_away_duration: int
+    tab_switch_count: int
+    fullscreen_exit_count: int
+    screen_share_stop_count: int
+    possible_phone_count: int
+    camera_disconnect_count: int
+    mic_disconnect_count: int
+    suspicious_event_count: int
+    integrity_score: float
+    final_status: str
+    created_at: datetime
+    updated_at: datetime
+
+    model_config = {"from_attributes": True}
+
+
+class StructuredAIEvaluation(BaseModel):
+    """
+    Pydantic schema enforcing structured AI evaluation output.
+    All score fields are validated to be within 0..100.
+    """
+    technical_accuracy: float = Field(..., ge=0.0, le=100.0, description="Technical accuracy score (0-100)")
+    keyword_relevance: float = Field(..., ge=0.0, le=100.0, description="Keyword relevance score (0-100)")
+    problem_solving: float = Field(..., ge=0.0, le=100.0, description="Problem-solving ability score (0-100)")
+    domain_knowledge: float = Field(..., ge=0.0, le=100.0, description="Domain knowledge score (0-100)")
+    answer_completeness: float = Field(..., ge=0.0, le=100.0, description="Answer completeness score (0-100)")
+    communication: float = Field(..., ge=0.0, le=100.0, description="Communication clarity score (0-100)")
+    confidence_indicators: float = Field(..., ge=0.0, le=100.0, description="Observed confidence indicators score (0-100)")
+    professionalism: float = Field(..., ge=0.0, le=100.0, description="Response professionalism score (0-100)")
+    
+    strengths: List[str] = Field(default_factory=list, description="Observed candidate strengths")
+    weaknesses: List[str] = Field(default_factory=list, description="Observed candidate weaknesses")
+    improvement_suggestions: List[str] = Field(default_factory=list, description="Actionable improvement suggestions")
+    practice_recommendations: List[str] = Field(default_factory=list, description="Targeted practice recommendations")
+    learning_resources: List[str] = Field(default_factory=list, description="Relevant learning resources")
+
+    @field_validator(
+        "technical_accuracy", "keyword_relevance", "problem_solving",
+        "domain_knowledge", "answer_completeness", "communication",
+        "confidence_indicators", "professionalism",
+        mode="before"
+    )
+    def validate_score_range(cls, v):
+        if v is None:
+            return 0.0
+        try:
+            val = float(v)
+            return max(0.0, min(100.0, val))
+        except (ValueError, TypeError):
+            raise ValueError(f"Score must be a valid number between 0 and 100, got: {v}")
+
+    @field_validator("strengths", "weaknesses", "improvement_suggestions", "practice_recommendations", "learning_resources", mode="before")
+    def validate_string_list(cls, v):
+        if v is None:
+            return []
+        if isinstance(v, str):
+            return [v]
+        return []
+
+
+class CandidateComparisonDetail(BaseModel):
+    session_id: UUID
+    candidate_id: Optional[UUID] = None
+    name: str
+    role: str
+    overall_score: Optional[float] = None
+    technical_score: Optional[float] = None
+    communication_score: Optional[float] = None
+    confidence_score: Optional[float] = None
+    professionalism_score: Optional[float] = None
+    status: str
+    recommendation: Optional[str] = None
+    initials: Optional[str] = None
+
+
+class ComparisonDifference(BaseModel):
+    technical_difference: Optional[float] = None
+    confidence_difference: Optional[float] = None
+    communication_difference: Optional[float] = None
+    professionalism_difference: Optional[float] = None
+    overall_difference: Optional[float] = None
+
+
+class CandidateComparisonResponse(BaseModel):
+    candidate_a: Optional[CandidateComparisonDetail] = None
+    candidate_b: Optional[CandidateComparisonDetail] = None
+    comparison: Optional[ComparisonDifference] = None
+    radar_data: List[Dict[str, Any]] = []
+    status: str = "available"
 

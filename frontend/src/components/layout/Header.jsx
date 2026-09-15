@@ -2,8 +2,9 @@
 //  Header — Authenticated user header (no free role switch)
 // ============================================================
 import { useState } from 'react';
-import { Zap, Bell, Settings, LogOut, ChevronDown } from 'lucide-react';
+import { Zap, Settings, LogOut, ChevronDown } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
+import NotificationBell from '../common/NotificationBell';
 
 const roleConfig = {
   candidate: { color: 'hsl(252,100%,68%)', label: 'Candidate', emoji: '🎯' },
@@ -56,10 +57,7 @@ export default function Header({ activeRole }) {
       {/* Actions */}
       <div className="header-actions">
         {/* Notification bell */}
-        <div className="relative" style={{ cursor: 'pointer', color: 'var(--text-muted)', display: 'flex', alignItems: 'center' }}>
-          <Bell size={18} />
-          <span className="notif-dot" />
-        </div>
+        <NotificationBell />
 
         {/* Settings */}
         <div style={{ cursor: 'pointer', color: 'var(--text-muted)', display: 'flex', alignItems: 'center' }}>

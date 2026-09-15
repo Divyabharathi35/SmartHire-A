@@ -1,0 +1,73 @@
+{
+  "model_name": "SmartHire-EmotionNet-EmotionCNN",
+  "architecture": "EmotionCNN",
+  "dataset_name": "FER-2013",
+  "input_size": [
+    1,
+    48,
+    48
+  ],
+  "class_labels": [
+    "angry",
+    "disgust",
+    "fear",
+    "happy",
+    "neutral",
+    "sad",
+    "surprise"
+  ],
+  "training_duration_seconds": 6.17,
+  "best_val_loss": 1.9442,
+  "best_val_accuracy": 15.62,
+  "trained_at": "2026-08-27T03:41:04.433333Z",
+  "model_version": "1.0.0",
+  "framework": "PyTorch 2.11.0+cpu",
+  "test_metrics": {
+    "overall_accuracy": 12.5,
+    "per_class_metrics": {
+      "angry": {
+        "precision": 0.125,
+        "recall": 1.0,
+        "f1_score": 0.2222,
+        "support": 4.0
+      },
+      "disgust": {
+        "precision": 0.0,
+        "recall": 0.0,
+        "f1_score": 0.0,
+        "support": 4.0
+      },
+      "fear": {
+        "precision": 0.0,
+        "recall": 0.0,
+        "f1_score": 0.0,
+        "support": 5.0
+      },
+      "happy": {
+        "precision": 0.0,
+        "recall": 0.0,
+        "f1_score": 0.0,
+        "support": 5.0
+      },
+      "neutral": {
+        "precision": 0.0,
+        "recall": 0.0,
+        "f1_score": 0.0,
+        "support": 5.0
+      },
+      "sad": {
+        "precision": 0.0,
+        "recall": 0.0,
+        "f1_score": 0.0,
+        "support": 4.0
+      },
+      "surprise": {
+        "precision": 0.0,
+        "recall": 0.0,
+        "f1_score": 0.0,
+        "support": 5.0
+      }
+    },
+    "test_samples": 32
+  }
+}

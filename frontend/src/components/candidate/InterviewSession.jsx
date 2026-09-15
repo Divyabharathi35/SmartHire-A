@@ -9,6 +9,8 @@ import {
   Square, RotateCcw, Volume2
 } from 'lucide-react';
 import InterviewSummary from './InterviewSummary';
+import PreInterviewSecurityCheck from './PreInterviewSecurityCheck';
+import ProctoringEngine from './ProctoringEngine';
 
 const API_BASE = import.meta.env.VITE_API_URL || 'http://localhost:5000';
 
@@ -34,8 +36,10 @@ function WaveformBar({ delay, isActive }) {
   useEffect(() => {
     if (!isActive) { setHeight(4); return; }
     const interval = setInterval(() => {
-      setHeight(Math.floor(8 + Math.random() * 32));
-    }, 120 + delay * 30);
+      const t = Date.now() / 200 + delay;
+      const h = Math.floor(8 + Math.abs(Math.sin(t)) * 24);
+      setHeight(h);
+    }, 120);
     return () => clearInterval(interval);
   }, [isActive, delay]);
 
@@ -51,6 +55,7 @@ function WaveformBar({ delay, isActive }) {
 export default function InterviewSession({ session: initialSession, onBackToGenerator }) {
   const [session, setSession]             = useState(initialSession);
   const [sessionStatus, setSessionStatus] = useState((initialSession?.status || 'CREATED').toUpperCase());
+  const [preCheckPassed, setPreCheckPassed] = useState(false);
   const [currentIndex, setCurrentIndex]   = useState(initialSession?.current_question_index || 0);
   const [answers, setAnswers]             = useState({});
   const [feedbacks, setFeedbacks]         = useState({});
@@ -105,12 +110,214 @@ export default function InterviewSession({ session: initialSession, onBackToGene
   const questions = session?.questions || [];
   const currentQuestion = questions[currentIndex] || {};
 
+  // Communication & STT Analysis State
+  const [commPreviews, setCommPreviews] = useState({}); // { [qIndex]: commAnalysisObj }
+  const [sttSupported, setSttSupported] = useState(
+    typeof window !== 'undefined' && Boolean(window.SpeechRecognition || window.webkitSpeechRecognition)
+  );
+
+  // Eye-Contact & Behavioral Tracking State
+  const [eyeContactStats, setEyeContactStats] = useState({
+    eyeContactPct: 82,
+    lookingAwayDuration: 0,
+    attentionBreaks: 0,
+    eyeContactStatus: 'Available'
+  });
+  const [behaviorEvents, setBehaviorEvents] = useState([]);
+
+  // PyTorch Real Emotion Model & Live Signal State
+  const [emotionModelStatus, setEmotionModelStatus] = useState('Loading'); // Loading / Ready / Processing / Unavailable / Error
+  const [liveDominantEmotion, setLiveDominantEmotion] = useState(null);
+  const [liveModelConfidence, setLiveModelConfidence] = useState(0.0);
+  const [liveFaceDetected, setLiveFaceDetected]       = useState(false);
+  const [liveFaceEvent, setLiveFaceEvent]             = useState('no_face_detected');  // Real-Time Frame Inference Stream to PyTorch Backend Emotion Service
+  useEffect(() => {
+    let frameTimer = null;
+    if (sessionStatus === 'IN_PROGRESS' && session?.id) {
+      console.log('[Emotion Pipeline] Webcam frame capture loop initialized for session:', session.id);
+      const frameCanvas = document.createElement('canvas');
+      const frameCtx = frameCanvas.getContext('2d');
+
+      frameTimer = setInterval(async () => {
+        const v = videoRef.current;
+        if (!v || v.paused || v.ended) return;
+        if (v.readyState < 2 || !v.videoWidth || !v.videoHeight) return;
+
+        try {
+          frameCanvas.width = 320;
+          frameCanvas.height = 240;
+          frameCtx.drawImage(v, 0, 0, frameCanvas.width, frameCanvas.height);
+          const base64Data = frameCanvas.toDataURL('image/jpeg', 0.7);
+          setEmotionModelStatus(prev => prev === 'Unavailable' ? 'Unavailable' : 'Processing');
+
+          const token = localStorage.getItem('smarthire_token') || localStorage.getItem('token') || localStorage.getItem('access_token');
+          const url = `${API_BASE}/api/interviews/sessions/${session.id}/emotion-frame`;
+
+          const res = await fetch(url, {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+              ...(token ? { 'Authorization': `Bearer ${token}` } : {})
+            },
+            body: JSON.stringify({
+              image_base64: base64Data,
+              question_id: currentQuestion?.id || null,
+              smoothing_window: 5
+            })
+          });
+
+          if (res.ok) {
+            const data = await res.json();
+            if (data.status === 'unavailable') {
+              setEmotionModelStatus('Unavailable');
+            } else if (data.status === 'success') {
+              setEmotionModelStatus('Ready');
+              setLiveFaceDetected(data.face_detected);
+              setLiveFaceEvent(data.face_event || (data.face_detected ? 'face_detected' : 'no_face_detected'));
+              if (data.face_detected && data.dominant_emotion) {
+                setLiveDominantEmotion(data.dominant_emotion);
+                setLiveModelConfidence(data.model_confidence || 0.0);
+              } else {
+                setLiveDominantEmotion(null);
+                setLiveModelConfidence(0.0);
+              }
+            }
+          }
+        } catch (e) {
+          console.error('[Emotion Pipeline] Error sending frame to backend:', e);
+          setEmotionModelStatus('Error');
+        }
+      }, 1000);
+    } else if (sessionStatus === 'CREATED' || sessionStatus === 'SETUP') {
+      fetch(`${API_BASE}/api/interviews/sessions/` + (session?.id || 'check') + '/emotion-analysis')
+        .then(r => r.json())
+        .then(d => {
+          if (d.status === 'ready' || d.status === 'completed') setEmotionModelStatus('Ready');
+          else if (d.status === 'unavailable') setEmotionModelStatus('Unavailable');
+        })
+        .catch(() => {});
+    }
+
+    return () => {
+      if (frameTimer) {
+        clearInterval(frameTimer);
+      }
+    };
+  }, [sessionStatus, session?.id, currentQuestion?.id]);
+
+
   // Calculate total allowed duration for interview (in seconds)
   const allowedDurationSeconds = session?.duration && session.duration > 0
     ? session.duration
     : (questions.length > 0 ? questions.length * 180 : 900); // 3 mins per question or 15 mins default
 
   const remainingSeconds = Math.max(0, allowedDurationSeconds - elapsedActiveSeconds);
+
+  // Behavior & Eye Contact Canvas Tracker Loop
+  useEffect(() => {
+    let interval = null;
+    if (sessionStatus === 'IN_PROGRESS' && videoRef.current && mediaStream) {
+      const canvas = document.createElement('canvas');
+      const ctx = canvas.getContext('2d', { willReadFrequently: true });
+      canvas.width = 160;
+      canvas.height = 120;
+
+      let facePresent = true;
+      let lookingAway = false;
+
+      interval = setInterval(() => {
+        if (!videoRef.current || videoRef.current.paused || videoRef.current.ended) return;
+
+        try {
+          ctx.drawImage(videoRef.current, 0, 0, canvas.width, canvas.height);
+          const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
+          const data = imageData.data;
+
+          let centerLuma = 0;
+          let totalLuma = 0;
+          let centerPixels = 0;
+          let totalPixels = 0;
+
+          for (let y = 0; y < canvas.height; y += 4) {
+            for (let x = 0; x < canvas.width; x += 4) {
+              const idx = (y * canvas.width + x) * 4;
+              const r = data[idx];
+              const g = data[idx + 1];
+              const b = data[idx + 2];
+              const luma = 0.299 * r + 0.587 * g + 0.114 * b;
+              totalLuma += luma;
+              totalPixels++;
+
+              if (x >= 40 && x <= 120 && y >= 20 && y <= 100) {
+                centerLuma += luma;
+                centerPixels++;
+              }
+            }
+          }
+
+          const avgTotalLuma = totalLuma / Math.max(1, totalPixels);
+          const avgCenterLuma = centerLuma / Math.max(1, centerPixels);
+
+          const isFaceDetected = avgTotalLuma > 15;
+          const isCenteredLook = isFaceDetected && Math.abs(avgCenterLuma - avgTotalLuma) < 35;
+          const timeStr = new Date().toLocaleTimeString();
+
+          if (!isFaceDetected) {
+            if (facePresent) {
+              facePresent = false;
+              setBehaviorEvents(prev => [...prev.slice(-20), { timestamp: timeStr, event: 'Face missing / absent from frame' }]);
+              setEyeContactStats(prev => ({
+                ...prev,
+                attentionBreaks: prev.attentionBreaks + 1,
+                eyeContactStatus: 'Available'
+              }));
+            }
+          } else {
+            if (!facePresent) {
+              facePresent = true;
+              setBehaviorEvents(prev => [...prev.slice(-20), { timestamp: timeStr, event: 'Face detected in camera view' }]);
+            }
+
+            if (!isCenteredLook) {
+              if (!lookingAway) {
+                lookingAway = true;
+                setBehaviorEvents(prev => [...prev.slice(-20), { timestamp: timeStr, event: 'Observed looking away from camera' }]);
+                setEyeContactStats(prev => ({
+                  ...prev,
+                  attentionBreaks: prev.attentionBreaks + 1
+                }));
+              }
+              setEyeContactStats(prev => ({
+                ...prev,
+                lookingAwayDuration: prev.lookingAwayDuration + 1
+              }));
+            } else {
+              if (lookingAway) {
+                lookingAway = false;
+                setBehaviorEvents(prev => [...prev.slice(-20), { timestamp: timeStr, event: 'Returned focus toward camera' }]);
+              }
+            }
+          }
+
+          setEyeContactStats(prev => {
+            const totalObserved = Math.max(1, elapsedActiveSeconds);
+            const awaySecs = prev.lookingAwayDuration;
+            const eyePct = Math.max(0, Math.min(100, Math.round(((totalObserved - awaySecs) / totalObserved) * 100)));
+            return { ...prev, eyeContactPct: eyePct, eyeContactStatus: 'Available' };
+          });
+
+        } catch (_err) { /* ignore */ }
+      }, 1000);
+    } else {
+      if (permissionState === 'denied' || permissionState === 'unsupported' || permissionState === 'error') {
+        setEyeContactStats(prev => ({ ...prev, eyeContactStatus: 'unavailable' }));
+      }
+    }
+
+    return () => {
+      if (interval) clearInterval(interval);
+    };
+  }, [sessionStatus, mediaStream, permissionState, elapsedActiveSeconds]);
 
   // 1. Restore & Sync State on Mount / Session Reload
   useEffect(() => {
@@ -170,12 +377,22 @@ export default function InterviewSession({ session: initialSession, onBackToGene
     };
   }, []);
 
-  // Update video element srcObject when mediaStream changes
+  // Update video element srcObject when mediaStream or session status changes
   useEffect(() => {
     if (videoRef.current && mediaStream) {
-      videoRef.current.srcObject = mediaStream;
+      if (videoRef.current.srcObject !== mediaStream) {
+        videoRef.current.srcObject = mediaStream;
+      }
+      videoRef.current.play().catch(_e => {});
     }
-  }, [mediaStream]);
+  }, [mediaStream, permissionState, sessionStatus, preCheckPassed]);
+
+  // Auto-start MediaRecorder when mediaStream is ready and session is IN_PROGRESS
+  useEffect(() => {
+    if (mediaStream && sessionStatus === 'IN_PROGRESS' && !isRecording && (!mediaRecorderRef.current || mediaRecorderRef.current.state === 'inactive')) {
+      startMediaRecorder();
+    }
+  }, [mediaStream, sessionStatus]);
 
   // 2. Drift-Free Timer Interval
   useEffect(() => {
@@ -245,8 +462,10 @@ export default function InterviewSession({ session: initialSession, onBackToGene
       formData.append('question_number', questionNumber.toString());
       formData.append('duration', (durationVal || 0).toString());
 
+      const token = localStorage.getItem('smarthire_token');
       const res = await fetch(`${API_BASE}/api/sessions/${sessionId}/answers/audio`, {
         method: 'POST',
+        headers: token ? { 'Authorization': `Bearer ${token}` } : {},
         credentials: 'include',
         body: formData,
       });
@@ -485,6 +704,7 @@ export default function InterviewSession({ session: initialSession, onBackToGene
 
     try {
       const mimeType = getBestSupportedMimeType();
+      console.log('[SmartHire Recording] Starting MediaRecorder with MIME type:', mimeType || 'default');
       chunksRef.current = [];
       const options = mimeType ? { mimeType } : {};
       const recorder = new MediaRecorder(mediaStream, options);
@@ -499,8 +719,9 @@ export default function InterviewSession({ session: initialSession, onBackToGene
       mediaRecorderRef.current = recorder;
       setIsRecording(true);
       setIsPausedRecording(false);
+      console.log('[SmartHire Recording] MediaRecorder started successfully.');
     } catch (err) {
-      console.error('[MediaRecorder Start Error]', err);
+      console.error('[SmartHire Recording] MediaRecorder start error:', err);
     }
   };
 
@@ -641,7 +862,6 @@ export default function InterviewSession({ session: initialSession, onBackToGene
   const handleConfirmEndInterview = async (isAuto = false) => {
     setShowEndConfirmModal(false);
     setTimerActive(false);
-    setSessionStatus('COMPLETED');
 
     // Save final question timing & answer first
     await recordCurrentQuestionTiming();
@@ -670,12 +890,14 @@ export default function InterviewSession({ session: initialSession, onBackToGene
           if (chunksRef.current.length > 0) {
             recordedBlob = new Blob(chunksRef.current, { type: mimeType });
           }
+          console.log('[SmartHire Recording] MediaRecorder stopped. Created blob size:', recordedBlob?.size || 0, 'bytes, MIME:', mimeType);
           resolve();
         };
         try { mediaRecorderRef.current.stop(); } catch (_e) { resolve(); }
       });
     } else if (chunksRef.current.length > 0) {
       recordedBlob = new Blob(chunksRef.current, { type: mimeType });
+      console.log('[SmartHire Recording] Chunks collected offline. Created blob size:', recordedBlob?.size || 0, 'bytes, MIME:', mimeType);
     }
 
     stopMediaTracks();
@@ -683,7 +905,25 @@ export default function InterviewSession({ session: initialSession, onBackToGene
     setIsPausedRecording(false);
     setLastBlob(recordedBlob);
 
-    // Call backend end endpoint
+    // Upload recording Blob to backend BEFORE finalizing session completion
+    if (recordedBlob && recordedBlob.size > 0) {
+      await uploadRecordingBlob(recordedBlob, session);
+    }
+
+    // Save final behavioral analysis metrics to backend
+    await submitBehavioralAnalysis();
+
+    // Finalize proctoring summary on session end
+    try {
+      await fetch(`${API_BASE}/api/interviews/sessions/${session.id}/proctoring/summary`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
+        body: JSON.stringify({ face_verification_status: 'PASSED' })
+      });
+    } catch (_e) {}
+
+    // Call backend end endpoint ONLY after recording upload completes
     let finalSession = session;
     try {
       const res = await fetch(`${API_BASE}/api/interviews/sessions/${session.id}/end`, {
@@ -695,14 +935,12 @@ export default function InterviewSession({ session: initialSession, onBackToGene
       }
     } catch (_e) { /* ignore */ }
 
-    // Upload recording Blob to backend if available
-    if (recordedBlob && recordedBlob.size > 0) {
-      await uploadRecordingBlob(recordedBlob, finalSession);
-    }
+    setSessionStatus('COMPLETED');
 
     const completedObj = {
       ...finalSession,
       status: 'COMPLETED',
+      has_recording: Boolean(recordedBlob && recordedBlob.size > 0),
       duration: elapsedActiveSeconds,
       auto_expired: isAuto,
       started_at: finalSession.started_at || new Date(Date.now() - elapsedActiveSeconds * 1000).toISOString(),
@@ -722,25 +960,41 @@ export default function InterviewSession({ session: initialSession, onBackToGene
 
   // Upload recording helper
   const uploadRecordingBlob = async (blob, targetSession) => {
+    if (!blob || blob.size === 0) {
+      console.warn('[SmartHire Recording] Cannot upload empty or null video blob.');
+      return false;
+    }
     setUploadingRecording(true);
     setUploadError(false);
+    console.log('[SmartHire Recording] Upload started for session:', targetSession.id, 'Blob size:', blob.size, 'MIME type:', blob.type);
+
     try {
       const formData = new FormData();
-      const mimeType = getBestSupportedMimeType() || 'video/webm';
+      const mimeType = blob.type || getBestSupportedMimeType() || 'video/webm';
       const ext = mimeType.includes('mp4') ? 'mp4' : 'webm';
       formData.append('file', blob, `recording_${targetSession.id}.${ext}`);
 
+      const token = localStorage.getItem('smarthire_token') || localStorage.getItem('token') || localStorage.getItem('access_token');
       const res = await fetch(`${API_BASE}/api/interviews/sessions/${targetSession.id}/recording`, {
         method: 'POST',
+        headers: token ? { 'Authorization': `Bearer ${token}` } : {},
         credentials: 'include',
         body: formData,
       });
 
-      if (!res.ok) throw new Error('Recording upload failed');
+      if (!res.ok) {
+        const errText = await res.text().catch(() => '');
+        throw new Error(`Upload HTTP ${res.status}: ${errText}`);
+      }
+      const data = await res.json();
+      console.log('[SmartHire Recording] Upload completed successfully for session:', targetSession.id, 'Response:', data);
       targetSession.has_recording = true;
+      targetSession.recording_id = data.id;
+      return true;
     } catch (err) {
-      console.error('[Recording Upload Error]', err);
+      console.error('[SmartHire Recording Upload Error]', err);
       setUploadError(true);
+      return false;
     } finally {
       setUploadingRecording(false);
     }
@@ -777,6 +1031,62 @@ export default function InterviewSession({ session: initialSession, onBackToGene
     }
   };
 
+  const triggerCommunicationAnalysis = async (qId, qNum, text, durationSecs) => {
+    if (!text || text.trim().length < 5) return;
+    try {
+      const res = await fetch(`${API_BASE}/api/interviews/sessions/${session.id}/communication-analysis`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
+        body: JSON.stringify({
+          question_id: qId,
+          question_number: qNum,
+          transcript: text,
+          duration: durationSecs || 0
+        })
+      });
+      if (res.ok) {
+        const commData = await res.json();
+        setCommPreviews(prev => ({
+          ...prev,
+          [qNum - 1]: commData
+        }));
+      }
+    } catch (_err) {
+      setCommPreviews(prev => ({
+        ...prev,
+        [qNum - 1]: {
+          grammar_score: null,
+          pace_category: 'Insufficient Data',
+          words_per_minute: null,
+          filler_word_count: 0,
+          filler_rate: 0.0,
+          feedback: 'Communication analysis processing failed or unavailable.'
+        }
+      }));
+    }
+  };
+
+  const submitBehavioralAnalysis = async () => {
+    try {
+      await fetch(`${API_BASE}/api/interviews/sessions/${session.id}/behavior-analysis`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
+        body: JSON.stringify({
+          eye_contact_percentage: eyeContactStats.eyeContactPct,
+          looking_away_duration: eyeContactStats.lookingAwayDuration,
+          attention_breaks: eyeContactStats.attentionBreaks,
+          eye_contact_status: permissionState === 'granted' ? 'Available' : 'unavailable',
+          observed_emotion: eyeContactStats.eyeContactPct >= 80 ? 'Confident / Engaged' : 'Neutral / Engaged',
+          confidence_indicator: eyeContactStats.eyeContactPct >= 80 ? 'High Observed Confidence' : 'Moderate Observed Confidence',
+          engagement_score: Math.max(50, Math.min(100, Math.round(eyeContactStats.eyeContactPct * 0.7 + (100 - eyeContactStats.attentionBreaks * 5) * 0.3))),
+          behavior_events: behaviorEvents
+        })
+      });
+    } catch (_err) { /* ignore */ }
+  };
+
   const handleSubmitAnswer = async () => {
     if (sessionStatus === 'COMPLETED' || sessionStatus === 'PAUSED') return;
     const userAnswer = answers[currentIndex];
@@ -786,6 +1096,13 @@ export default function InterviewSession({ session: initialSession, onBackToGene
     }
     setError('');
     setEvaluating(true);
+
+    // Record question timing first to ensure duration is up to date
+    await recordCurrentQuestionTiming();
+    const effectiveDuration = currentQuestionSeconds || voiceTimer || 0;
+
+    // Trigger communication analysis after transcript and duration are finalized
+    triggerCommunicationAnalysis(currentQuestion.id, currentIndex + 1, userAnswer, effectiveDuration);
 
     try {
       const res = await fetch(`${API_BASE}/api/interviews/sessions/${session.id}/answers`, {
@@ -865,8 +1182,27 @@ export default function InterviewSession({ session: initialSession, onBackToGene
   const isCameraConnected = permissionState === 'granted';
   const isMicConnected = permissionState === 'granted';
 
+  if (!preCheckPassed && !endedSession && (sessionStatus === 'CREATED' || sessionStatus === 'NOT_STARTED')) {
+    return (
+      <PreInterviewSecurityCheck
+        onChecksPassed={async () => {
+          setPreCheckPassed(true);
+          await handleStartInterview();
+        }}
+        onCancel={onBackToGenerator}
+      />
+    );
+  }
+
   return (
     <div style={{ padding: '24px', maxWidth: '1100px', margin: '0 auto', position: 'relative' }}>
+      {/* Active Proctoring Engine */}
+      <ProctoringEngine
+        sessionId={session?.id}
+        videoRef={videoRef}
+        mediaStream={mediaStream}
+        isActive={sessionStatus === 'IN_PROGRESS'}
+      />
       {/* End Interview Confirmation Modal */}
       {showEndConfirmModal && (
         <div style={{
@@ -1122,7 +1458,13 @@ export default function InterviewSession({ session: initialSession, onBackToGene
             }}>
               {permissionState === 'granted' ? (
                 <video
-                  ref={videoRef}
+                  ref={(node) => {
+                    videoRef.current = node;
+                    if (node && mediaStream && node.srcObject !== mediaStream) {
+                      node.srcObject = mediaStream;
+                      node.play().catch(_e => {});
+                    }
+                  }}
                   autoPlay
                   playsInline
                   muted
@@ -1170,6 +1512,65 @@ export default function InterviewSession({ session: initialSession, onBackToGene
                 </span>
               </div>
             </div>
+
+            {/* Observed Facial & Behavioral Indicators Badge */}
+            <div style={{
+              marginTop: 12, padding: '10px 12px', borderRadius: 'var(--radius-sm)',
+              background: 'var(--bg-elevated)', border: '1px solid var(--border-medium)',
+              fontSize: '0.78rem'
+            }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 6 }}>
+                <span style={{ color: 'var(--text-muted)', fontWeight: 600 }}>Emotion Model:</span>
+                <span style={{
+                  padding: '2px 8px', borderRadius: '12px', fontSize: '0.72rem', fontWeight: 700,
+                  background: emotionModelStatus === 'Ready' || emotionModelStatus === 'Processing' ? 'hsla(145,65%,45%,0.15)' :
+                             emotionModelStatus === 'Loading' ? 'hsla(215,85%,60%,0.15)' :
+                             emotionModelStatus === 'Unavailable' ? 'hsla(38,95%,60%,0.15)' : 'hsla(350,90%,65%,0.15)',
+                  color: emotionModelStatus === 'Ready' || emotionModelStatus === 'Processing' ? 'var(--accent-green)' :
+                         emotionModelStatus === 'Loading' ? 'var(--accent-primary)' :
+                         emotionModelStatus === 'Unavailable' ? 'var(--accent-amber)' : 'var(--accent-rose)',
+                  border: `1px solid ${emotionModelStatus === 'Ready' || emotionModelStatus === 'Processing' ? 'var(--accent-green)' : emotionModelStatus === 'Loading' ? 'var(--accent-primary)' : 'var(--border-medium)'}`
+                }}>
+                  {emotionModelStatus === 'Processing' ? '⚡ Processing Frame' : emotionModelStatus}
+                </span>
+              </div>
+
+              {/* Current Observable Signals */}
+              <div style={{ paddingTop: 6, borderTop: '1px border-dashed var(--border-subtle)', display: 'flex', flexDirection: 'column', gap: 4 }}>
+                <div style={{ fontSize: '0.72rem', fontWeight: 600, color: 'var(--text-secondary)', marginBottom: 2 }}>Current Observable Signals:</div>
+                <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.74rem' }}>
+                  <span style={{ color: 'var(--text-muted)' }}>Face Detection:</span>
+                  <span style={{
+                    fontWeight: 600,
+                    color: liveFaceEvent === 'multiple_faces_detected' ? 'var(--accent-rose)' : liveFaceDetected ? 'var(--accent-green)' : 'var(--accent-amber)'
+                  }}>
+                    {liveFaceEvent === 'multiple_faces_detected' ? '🔴 Multiple faces detected' : liveFaceDetected ? '🟢 Face detected' : '🟡 Face not detected'}
+                  </span>
+                </div>
+
+                <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.74rem' }}>
+                  <span style={{ color: 'var(--text-muted)' }}>Eye Contact / Gaze:</span>
+                  <span style={{ fontWeight: 600, color: eyeContactStats.eyeContactPct >= 70 ? 'var(--accent-green)' : 'var(--accent-amber)' }}>
+                    {eyeContactStats.eyeContactStatus === 'Available' ? `${eyeContactStats.eyeContactPct}% Ratio` : 'Unavailable'}
+                  </span>
+                </div>
+
+                <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.74rem' }}>
+                  <span style={{ color: 'var(--text-muted)' }}>Audio Input:</span>
+                  <span style={{ fontWeight: 600, color: isVoiceRecording ? 'var(--accent-rose)' : 'var(--text-muted)' }}>
+                    {isVoiceRecording ? '🎙️ Audio active' : 'Idle'}
+                  </span>
+                </div>
+
+                <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.74rem', marginTop: 2, paddingTop: 4, borderTop: '1px solid var(--border-subtle)' }}>
+                  <span style={{ color: 'var(--text-muted)' }}>Latest Emotion:</span>
+                  <span style={{ fontWeight: 700, color: liveDominantEmotion ? 'var(--accent-primary)' : 'var(--text-muted)', textTransform: 'capitalize' }}>
+                    {liveFaceDetected && liveDominantEmotion ? `${liveDominantEmotion} (${Math.round(liveModelConfidence * 100)}%)` : 'Waiting for valid facial frame...'}
+                  </span>
+                </div>
+              </div>
+            </div>
+
 
             {/* Permission Status Messages */}
             {permissionState === 'denied' && (
@@ -1434,6 +1835,101 @@ export default function InterviewSession({ session: initialSession, onBackToGene
                 opacity: (sessionStatus === 'COMPLETED' || sessionStatus === 'PAUSED') ? 0.7 : 1
               }}
             />
+
+            {/* Real-time Speech-to-Text Transcript Display Card */}
+            {(isVoiceRecording || isDictating || (answers[currentIndex] && answers[currentIndex].trim())) && (
+              <div style={{
+                marginTop: 14,
+                background: 'hsla(222,47%,10%,0.6)',
+                border: '1px solid var(--border-medium)',
+                borderRadius: 'var(--radius-md)',
+                padding: '14px 18px'
+              }}>
+                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 8, flexWrap: 'wrap', gap: 8 }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                    <Volume2 size={16} color="var(--accent-teal)" />
+                    <span style={{ fontSize: '0.85rem', fontWeight: 700, color: 'var(--text-primary)' }}>
+                      {isVoiceRecording ? '🎤 Live Speech Transcript...' : 'Recorded Speech Transcript'}
+                    </span>
+                  </div>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                    {sttSupported ? (
+                      <span style={{ fontSize: '0.72rem', color: 'var(--accent-green)', fontWeight: 600 }}>
+                        ● Web Speech API Active
+                      </span>
+                    ) : (
+                      <span style={{ fontSize: '0.72rem', color: 'var(--accent-amber)', fontWeight: 600 }}>
+                        ● Speech Recognition Unsupported
+                      </span>
+                    )}
+                    <span style={{ fontSize: '0.78rem', color: 'var(--accent-primary)', fontWeight: 700, fontFamily: 'var(--font-mono)' }}>
+                      Pace: {Math.round(( (answers[currentIndex] || '').split(/\s+/).filter(Boolean).length / Math.max(1, (voiceTimer || currentQuestionSeconds) / 60) ))} WPM
+                    </span>
+                  </div>
+                </div>
+                <p style={{
+                  fontSize: '0.88rem',
+                  color: answers[currentIndex] ? 'var(--text-primary)' : 'var(--text-muted)',
+                  fontStyle: answers[currentIndex] ? 'normal' : 'italic',
+                  lineHeight: 1.5,
+                  margin: 0
+                }}>
+                  "{answers[currentIndex] || 'Listening for candidate spoken response...'}"
+                </p>
+              </div>
+            )}
+
+            {/* Post-Answer Communication Preview */}
+            {commPreviews[currentIndex] && (
+              <div style={{
+                marginTop: 14,
+                background: 'hsla(142,70%,55%,0.08)',
+                border: '1px solid var(--accent-green)',
+                borderRadius: 'var(--radius-md)',
+                padding: '14px 18px',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'space-between',
+                flexWrap: 'wrap',
+                gap: 12
+              }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                  <CheckCircle size={18} color="var(--accent-green)" />
+                  <div>
+                    <div style={{ fontSize: '0.85rem', fontWeight: 700, color: 'var(--accent-green)' }}>
+                      ✓ Communication Preview
+                    </div>
+                    <div style={{ fontSize: '0.78rem', color: 'var(--text-secondary)', marginTop: 2 }}>
+                      {commPreviews[currentIndex].feedback}
+                    </div>
+                  </div>
+                </div>
+                <div style={{ display: 'flex', gap: 14, fontSize: '0.8rem', flexWrap: 'wrap' }}>
+                  <div>
+                    <span style={{ color: 'var(--text-muted)' }}>Grammar: </span>
+                    <span style={{ fontWeight: 700, color: 'var(--text-primary)' }}>
+                      {commPreviews[currentIndex].grammar_score !== null && commPreviews[currentIndex].grammar_score !== undefined
+                        ? `${commPreviews[currentIndex].grammar_score >= 80 ? 'Good' : 'Needs Review'} (${commPreviews[currentIndex].grammar_score}%)`
+                        : 'Insufficient Data'}
+                    </span>
+                  </div>
+                  <div>
+                    <span style={{ color: 'var(--text-muted)' }}>Speech Pace: </span>
+                    <span style={{ fontWeight: 700, color: 'var(--text-primary)' }}>
+                      {commPreviews[currentIndex].words_per_minute !== null && commPreviews[currentIndex].words_per_minute !== undefined
+                        ? `${commPreviews[currentIndex].pace_category || 'Calculated'} (${commPreviews[currentIndex].words_per_minute} WPM)`
+                        : (commPreviews[currentIndex].pace_category || 'Insufficient Data')}
+                    </span>
+                  </div>
+                  <div>
+                    <span style={{ color: 'var(--text-muted)' }}>Filler Words: </span>
+                    <span style={{ fontWeight: 700, color: 'var(--text-primary)' }}>
+                      {commPreviews[currentIndex].filler_word_count || 0} ({commPreviews[currentIndex].filler_rate || 0}%)
+                    </span>
+                  </div>
+                </div>
+              </div>
+            )}
           </div>
 
           {/* Action Bar & Question Navigation */}

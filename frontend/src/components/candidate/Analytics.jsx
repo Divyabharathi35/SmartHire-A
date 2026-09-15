@@ -1,24 +1,30 @@
+// ============================================================
+//  Analytics.jsx — Candidate Performance Analytics Dashboard
+//  Exclusively renders:
+//  1. Skill Analysis (Vertical Bar Graph)
+//  2. Predicted Weak Areas (Horizontal Bar Graph)
+// ============================================================
+import { useState, useEffect } from 'react';
 import {
-  RadarChart, Radar, PolarGrid, PolarAngleAxis, PolarRadiusAxis, ResponsiveContainer,
-  BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Cell,
-  PieChart, Pie, Legend,
+  BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Cell, LabelList
 } from 'recharts';
-import { competencyData, categoryScores, timeDistribution } from '../../data/mockData';
-import { Award, TrendingUp, MessageSquare, Activity } from 'lucide-react';
+import { AlertTriangle, CheckCircle, RefreshCw, BarChart2 } from 'lucide-react';
+import ErrorBoundary from '../common/ErrorBoundary';
 
-const COLORS = ['hsl(252,100%,68%)', 'hsl(280,90%,65%)', 'hsl(174,80%,55%)', 'hsl(38,95%,60%)'];
+const API_BASE = import.meta.env.VITE_API_URL || 'http://localhost:5000';
 
 const CustomTooltip = ({ active, payload, label }) => {
   if (active && payload && payload.length) {
     return (
       <div style={{
         background: 'var(--bg-card)', border: '1px solid var(--border-medium)',
-        borderRadius: 'var(--radius-md)', padding: '10px 14px', fontSize: '0.8rem'
+        borderRadius: 'var(--radius-md)', padding: '10px 14px', fontSize: '0.8rem',
+        boxShadow: '0 4px 12px rgba(0,0,0,0.3)'
       }}>
-        <p style={{ color: 'var(--text-secondary)', marginBottom: 4 }}>{label}</p>
+        <p style={{ color: 'var(--text-secondary)', fontWeight: 600, marginBottom: 4 }}>{label}</p>
         {payload.map((p, i) => (
-          <p key={i} style={{ color: p.color || p.fill, fontWeight: 600 }}>
-            {p.name}: {p.value}
+          <p key={i} style={{ color: p.color || p.fill, fontWeight: 700, margin: 0 }}>
+            {p.name || 'Score'}: {p.value !== null && p.value !== undefined ? `${p.value}%` : 'N/A'}
           </p>
         ))}
       </div>
@@ -27,129 +33,258 @@ const CustomTooltip = ({ active, payload, label }) => {
   return null;
 };
 
-const metricHighlights = [
-  { label: 'Overall Score', value: '87', unit: '/100', icon: Award, color: 'var(--accent-primary)' },
-  { label: 'Communication', value: '79', unit: '%', icon: MessageSquare, color: 'var(--accent-teal)' },
-  { label: 'Improvement', value: '+33', unit: 'pts', icon: TrendingUp, color: 'var(--accent-green)' },
-  { label: 'Consistency', value: '91', unit: '%', icon: Activity, color: 'var(--accent-amber)' },
-];
-
 export default function Analytics() {
+  const [data, setData]       = useState(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError]     = useState(null);
+
+  const fetchAnalytics = async () => {
+    setLoading(true);
+    setError(null);
+    try {
+      const token = localStorage.getItem('smarthire_token') || localStorage.getItem('token') || localStorage.getItem('access_token');
+      const headers = {};
+      if (token) headers['Authorization'] = `Bearer ${token}`;
+
+      const res = await fetch(`${API_BASE}/api/candidate/performance-analytics`, {
+        method: 'GET',
+        headers,
+        credentials: 'include'
+      });
+      if (res.ok) {
+        const json = await res.json();
+        setData(json);
+      } else {
+        const errTxt = await res.text();
+        setError(`HTTP ${res.status}: ${errTxt || 'Failed to load analytics'}`);
+      }
+    } catch (err) {
+      console.error('[Analytics] Fetch error:', err);
+      setError(err.message || 'Network error loading analytics data');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    fetchAnalytics();
+  }, []);
+
+  if (loading) {
+    return (
+      <div className="card text-center" style={{ padding: '60px 20px', maxWidth: '1100px', margin: '0 auto' }}>
+        <RefreshCw className="animate-spin" size={32} style={{ color: 'var(--accent-primary)', margin: '0 auto 14px' }} />
+        <p style={{ color: 'var(--text-muted)', fontSize: '0.92rem' }}>Loading candidate performance analytics...</p>
+      </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <div className="card" style={{ borderColor: 'var(--accent-rose, #ef4444)', padding: '24px', maxWidth: '1100px', margin: '0 auto' }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 10, color: 'var(--accent-rose, #ef4444)', marginBottom: 8 }}>
+          <AlertTriangle size={22} />
+          <h3 style={{ fontSize: '1.05rem', fontWeight: 700 }}>Unable to Load Analytics</h3>
+        </div>
+        <p style={{ fontSize: '0.88rem', color: 'var(--text-muted)', marginBottom: 16 }}>{error}</p>
+        <button
+          onClick={fetchAnalytics}
+          style={{
+            padding: '8px 16px', borderRadius: 'var(--radius-md, 6px)',
+            background: 'var(--bg-elevated)', border: '1px solid var(--border-medium)',
+            color: 'var(--text-primary)', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 6
+          }}
+        >
+          <RefreshCw size={14} /> Retry
+        </button>
+      </div>
+    );
+  }
+
+  const completedCount = data?.completed_interviews_count || 0;
+  const skillAnalytics = data?.skill_analytics || data?.skill_analysis || [];
+  const weakAreas = data?.predicted_weak_areas || [];
+
   return (
-    <div className="animate-fade-in-up">
-      <div className="page-header">
-        <h1>Performance Analytics</h1>
-        <p>Deep-dive into your interview performance across all competencies</p>
-      </div>
-
-      {/* KPI Row */}
-      <div className="grid-4" style={{ marginBottom: 'var(--space-8)' }}>
-        {metricHighlights.map((m, i) => {
-          const Icon = m.icon;
-          return (
-            <div key={m.label} className={`stat-card animate-fade-in-up delay-${i + 1}`}>
-              <div className="flex items-center gap-3">
-                <div className="stat-icon" style={{ background: `${m.color}18` }}>
-                  <Icon size={20} color={m.color} />
-                </div>
-                <span className="stat-label">{m.label}</span>
-              </div>
-              <div className="flex items-end gap-1">
-                <span className="stat-value">{m.value}</span>
-                <span style={{ color: 'var(--text-muted)', fontSize: '0.9rem', paddingBottom: 4 }}>{m.unit}</span>
-              </div>
-            </div>
-          );
-        })}
-      </div>
-
-      {/* Main Charts Row */}
-      <div className="grid-2" style={{ marginBottom: 'var(--space-8)' }}>
-        {/* Radar Chart */}
-        <div className="card">
-          <h3 className="section-title" style={{ marginBottom: 'var(--space-2)' }}>Competency Radar</h3>
-          <p className="text-xs text-muted" style={{ marginBottom: 'var(--space-4)' }}>Multi-dimensional performance breakdown</p>
-          <ResponsiveContainer width="100%" height={280}>
-            <RadarChart data={competencyData} margin={{ top: 10, right: 20, bottom: 10, left: 20 }}>
-              <PolarGrid stroke="var(--border-subtle)" />
-              <PolarAngleAxis dataKey="subject" tick={{ fill: 'var(--text-muted)', fontSize: 11, fontFamily: 'var(--font-body)' }} />
-              <PolarRadiusAxis angle={30} domain={[0, 100]} tick={false} axisLine={false} />
-              <Radar name="You" dataKey="A" stroke="hsl(252,100%,68%)" fill="hsl(252,100%,68%)" fillOpacity={0.2} strokeWidth={2} dot={{ r: 4, fill: 'hsl(252,100%,68%)' }} />
-            </RadarChart>
-          </ResponsiveContainer>
+    <ErrorBoundary>
+      <div className="animate-fade-in-up" style={{ padding: '24px', maxWidth: '1100px', margin: '0 auto' }}>
+        {/* Page Header */}
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: 16, marginBottom: 24 }}>
+          <div>
+            <h1 style={{ fontFamily: 'var(--font-heading)', fontSize: '1.6rem', fontWeight: 700, margin: 0 }}>
+              Candidate Performance Analytics
+            </h1>
+            <p style={{ color: 'var(--text-secondary)', fontSize: '0.88rem', marginTop: 4, margin: 0 }}>
+              Real-time analytics grounded strictly in your completed interview sessions.
+            </p>
+          </div>
+          <button
+            id="btn-refresh-analytics"
+            onClick={fetchAnalytics}
+            style={{
+              padding: '9px 18px', borderRadius: 'var(--radius-md, 8px)',
+              background: 'var(--bg-card)', border: '1px solid var(--border-medium)',
+              color: 'var(--text-primary)', fontSize: '0.85rem', fontWeight: 600,
+              cursor: 'pointer', display: 'inline-flex', alignItems: 'center', gap: 8,
+              boxShadow: '0 2px 6px rgba(0,0,0,0.15)', transition: 'all 0.2s ease'
+            }}
+          >
+            <RefreshCw size={14} /> Refresh Data
+          </button>
         </div>
 
-        {/* Bar Chart */}
-        <div className="card">
-          <h3 className="section-title" style={{ marginBottom: 'var(--space-2)' }}>Category Scores</h3>
-          <p className="text-xs text-muted" style={{ marginBottom: 'var(--space-4)' }}>Score breakdown by question category</p>
-          <ResponsiveContainer width="100%" height={280}>
-            <BarChart data={categoryScores} margin={{ top: 10, right: 10, left: -20, bottom: 10 }} barSize={28}>
-              <CartesianGrid strokeDasharray="3 3" stroke="var(--border-subtle)" vertical={false} />
-              <XAxis dataKey="name" tick={{ fill: 'var(--text-muted)', fontSize: 11 }} axisLine={false} tickLine={false} />
-              <YAxis domain={[0, 100]} tick={{ fill: 'var(--text-muted)', fontSize: 11 }} axisLine={false} tickLine={false} />
-              <Tooltip content={<CustomTooltip />} cursor={{ fill: 'hsla(252,100%,68%,0.05)' }} />
-              <Bar dataKey="score" radius={[6, 6, 0, 0]} name="Score">
-                {categoryScores.map((entry, i) => (
-                  <Cell key={i} fill={entry.fill} />
-                ))}
-              </Bar>
-            </BarChart>
-          </ResponsiveContainer>
-        </div>
-      </div>
+        {/* ────────────────────────────────────────────────────────────
+            SECTION 1: SKILL ANALYSIS (Vertical Bar Graph)
+        ──────────────────────────────────────────────────────────── */}
+        <div className="card" style={{ padding: '24px', borderRadius: 'var(--radius-lg, 12px)', background: 'var(--bg-card)', border: '1px solid var(--border-subtle)', marginBottom: 24 }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 4 }}>
+            <BarChart2 size={18} color="var(--accent-primary, #6366f1)" />
+            <h2 style={{ fontFamily: 'var(--font-heading)', fontSize: '1.1rem', fontWeight: 700, margin: 0 }}>
+              Skill Analysis
+            </h2>
+          </div>
+          <p style={{ fontSize: '0.8rem', color: 'var(--text-muted)', marginBottom: 20 }}>
+            Performance across evaluated question skills &amp; domains
+          </p>
 
-      {/* Bottom Row */}
-      <div className="grid-2">
-        {/* Pie Chart — Time Distribution */}
-        <div className="card">
-          <h3 className="section-title" style={{ marginBottom: 'var(--space-2)' }}>Time Distribution</h3>
-          <p className="text-xs text-muted" style={{ marginBottom: 'var(--space-4)' }}>How you spent your answer time</p>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 'var(--space-6)' }}>
-            <ResponsiveContainer width={180} height={180}>
-              <PieChart>
-                <Pie data={timeDistribution} cx="50%" cy="50%" innerRadius={50} outerRadius={80} paddingAngle={3} dataKey="value">
-                  {timeDistribution.map((entry, i) => (
-                    <Cell key={i} fill={entry.color} />
+          {skillAnalytics.length > 0 ? (
+            <ResponsiveContainer width="100%" height={300}>
+              <BarChart data={skillAnalytics} margin={{ top: 24, right: 24, left: -16, bottom: 24 }} barSize={42}>
+                <CartesianGrid strokeDasharray="3 3" stroke="var(--border-subtle)" vertical={false} />
+                <XAxis
+                  dataKey="skill"
+                  tick={{ fill: 'var(--text-secondary)', fontSize: 12, fontWeight: 600 }}
+                  axisLine={false}
+                  tickLine={false}
+                  interval={0}
+                />
+                <YAxis
+                  domain={[0, 100]}
+                  tick={{ fill: 'var(--text-muted)', fontSize: 11 }}
+                  axisLine={false}
+                  tickLine={false}
+                  ticks={[0, 25, 50, 75, 100]}
+                  unit="%"
+                />
+                <Tooltip content={<CustomTooltip />} cursor={{ fill: 'hsla(252,100%,68%,0.06)' }} />
+                <Bar dataKey="score" radius={[6, 6, 0, 0]} name="Skill Score">
+                  <LabelList
+                    dataKey="score"
+                    position="top"
+                    fill="var(--text-primary)"
+                    fontSize={11}
+                    fontWeight={700}
+                    formatter={(v) => `${Math.round(v)}%`}
+                  />
+                  {skillAnalytics.map((entry, i) => (
+                    <Cell
+                      key={i}
+                      fill={entry.score < 70 ? 'var(--accent-amber, #f59e0b)' : 'var(--accent-primary, #6366f1)'}
+                    />
                   ))}
-                </Pie>
-              </PieChart>
+                </Bar>
+              </BarChart>
             </ResponsiveContainer>
-            <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-3)' }}>
-              {timeDistribution.map(d => (
-                <div key={d.name} className="flex items-center gap-3">
-                  <div style={{ width: 10, height: 10, borderRadius: '50%', background: d.color, flexShrink: 0 }} />
-                  <span style={{ fontSize: '0.82rem', color: 'var(--text-secondary)' }}>{d.name}</span>
-                  <span style={{ marginLeft: 'auto', fontSize: '0.82rem', fontWeight: 600, color: 'var(--text-primary)' }}>{d.value}%</span>
-                </div>
-              ))}
+          ) : (
+            <div style={{
+              height: 220, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center',
+              background: 'var(--bg-surface)', borderRadius: 'var(--radius-md)', border: '1px dashed var(--border-subtle)',
+              color: 'var(--text-muted)', textAlign: 'center', padding: 20
+            }}>
+              <BarChart2 size={32} style={{ opacity: 0.3, marginBottom: 8 }} />
+              <p style={{ fontSize: '0.9rem', fontWeight: 600, color: 'var(--text-secondary)', margin: 0 }}>
+                Insufficient Data for Skill Analysis
+              </p>
+              <p style={{ fontSize: '0.78rem', marginTop: 4, margin: 0 }}>
+                Complete interview sessions to generate skill performance graphs.
+              </p>
             </div>
-          </div>
+          )}
         </div>
 
-        {/* Detailed metrics text */}
-        <div className="card">
-          <h3 className="section-title">Feedback Summary</h3>
-          <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-5)' }}>
-            {[
-              { label: 'Technical Depth', score: 88, note: 'Strong React and JS fundamentals. Minor gaps in system design trade-offs.' },
-              { label: 'Communication', score: 79, note: 'Clear articulation. Improve sentence structure on complex topics.' },
-              { label: 'Confidence', score: 84, note: 'Consistent tone with good eye contact simulation. Minimal filler words.' },
-            ].map(item => (
-              <div key={item.label}>
-                <div className="flex justify-between" style={{ marginBottom: 6 }}>
-                  <span style={{ fontSize: '0.85rem', fontWeight: 600, color: 'var(--text-primary)' }}>{item.label}</span>
-                  <span style={{ fontSize: '0.85rem', fontWeight: 700, color: 'var(--accent-primary)' }}>{item.score}/100</span>
-                </div>
-                <div className="progress-bar" style={{ marginBottom: 6 }}>
-                  <div className="progress-fill" style={{ width: `${item.score}%` }} />
-                </div>
-                <p style={{ fontSize: '0.78rem', color: 'var(--text-muted)', lineHeight: 1.5 }}>{item.note}</p>
-              </div>
-            ))}
+        {/* ────────────────────────────────────────────────────────────
+            SECTION 2: PREDICTED WEAK AREAS (Horizontal Bar Graph)
+        ──────────────────────────────────────────────────────────── */}
+        <div className="card" style={{ padding: '24px', borderRadius: 'var(--radius-lg, 12px)', background: 'var(--bg-card)', border: '1px solid var(--border-subtle)' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 4 }}>
+            <AlertTriangle size={18} color="var(--accent-amber, #f59e0b)" />
+            <h2 style={{ fontFamily: 'var(--font-heading)', fontSize: '1.1rem', fontWeight: 700, margin: 0 }}>
+              Predicted Weak Areas
+            </h2>
           </div>
+          <p style={{ fontSize: '0.8rem', color: 'var(--text-muted)', marginBottom: 20 }}>
+            Identified from repeated low performance (&lt;70% average score) across actual questions
+          </p>
+
+          {completedCount === 0 || skillAnalytics.length === 0 ? (
+            <div style={{
+              padding: '36px 20px', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center',
+              background: 'var(--bg-surface)', borderRadius: 'var(--radius-md)', border: '1px dashed var(--border-subtle)',
+              color: 'var(--text-muted)', textAlign: 'center'
+            }}>
+              <AlertTriangle size={32} style={{ opacity: 0.3, marginBottom: 8 }} />
+              <p style={{ fontSize: '0.9rem', fontWeight: 600, color: 'var(--text-secondary)', margin: 0 }}>
+                Insufficient Data for Weak Area Analysis
+              </p>
+              <p style={{ fontSize: '0.78rem', marginTop: 4, margin: 0 }}>
+                Complete interview sessions to analyze question evaluations and detect improvement areas.
+              </p>
+            </div>
+          ) : weakAreas.length === 0 ? (
+            <div style={{
+              background: 'hsla(142,70%,55%,0.08)', border: '1px solid var(--accent-green, #10b981)',
+              borderRadius: 'var(--radius-md, 8px)', padding: '24px', textAlign: 'center'
+            }}>
+              <CheckCircle size={28} color="var(--accent-green, #10b981)" style={{ margin: '0 auto 8px' }} />
+              <p style={{ fontSize: '0.95rem', fontWeight: 700, color: 'var(--text-primary)', margin: 0 }}>
+                No Critical Weak Areas Detected
+              </p>
+              <p style={{ fontSize: '0.8rem', color: 'var(--text-muted)', marginTop: 4, margin: 0 }}>
+                All evaluated skills and question categories meet or exceed the 70% benchmark threshold.
+              </p>
+            </div>
+          ) : (
+            <ResponsiveContainer width="100%" height={Math.max(160, weakAreas.length * 54)}>
+              <BarChart
+                data={weakAreas}
+                layout="vertical"
+                margin={{ top: 12, right: 48, left: 24, bottom: 12 }}
+                barSize={24}
+              >
+                <CartesianGrid strokeDasharray="3 3" stroke="var(--border-subtle)" horizontal={false} />
+                <XAxis
+                  type="number"
+                  domain={[0, 100]}
+                  tick={{ fill: 'var(--text-muted)', fontSize: 11 }}
+                  axisLine={false}
+                  tickLine={false}
+                  ticks={[0, 25, 50, 75, 100]}
+                  unit="%"
+                />
+                <YAxis
+                  type="category"
+                  dataKey="skill"
+                  tick={{ fill: 'var(--text-secondary)', fontSize: 12, fontWeight: 600 }}
+                  axisLine={false}
+                  tickLine={false}
+                  width={140}
+                />
+                <Tooltip content={<CustomTooltip />} cursor={{ fill: 'hsla(38,95%,60%,0.06)' }} />
+                <Bar dataKey="average_score" radius={[0, 4, 4, 0]} fill="var(--accent-amber, #f59e0b)" name="Avg Score">
+                  <LabelList
+                    dataKey="average_score"
+                    position="right"
+                    fill="var(--accent-amber, #f59e0b)"
+                    fontSize={11}
+                    fontWeight={700}
+                    formatter={(v) => `${Math.round(v)}%`}
+                  />
+                </Bar>
+              </BarChart>
+            </ResponsiveContainer>
+          )}
         </div>
       </div>
-    </div>
+    </ErrorBoundary>
   );
 }

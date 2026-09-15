@@ -150,7 +150,7 @@ export default function AdminOverview({ onTabChange }) {
             {stats.ai_questions_generated}
           </div>
           <div style={{ fontSize: '0.78rem', color: 'var(--text-secondary)' }}>
-            Powered by Gemini 1.5 Flash Engine
+            Powered by Gemini 3.6 Flash Engine
           </div>
         </div>
       </div>

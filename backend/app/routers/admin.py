@@ -51,11 +51,10 @@ class PlatformConfigRequest(BaseModel):
     enforce_strong_passwords: bool = True
 
 class AIConfigRequest(BaseModel):
-    ai_provider: str = "gemini" # gemini, openai, ollama
+    ai_provider: str = "gemini" # gemini
     gemini_api_key: str = ""
     openai_api_key: str = ""
-    ollama_base_url: str = "http://localhost:11434"
-    default_model: str = "gemini-3.5-flash"
+    default_model: str = "gemini-3.6-flash"
     temperature: float = 0.7
     max_tokens: int = 2048
     enable_ai_generation: bool = True
@@ -68,8 +67,45 @@ _ai_config = AIConfigRequest(
     ai_provider=settings.AI_PROVIDER,
     gemini_api_key=settings.GEMINI_API_KEY,
     openai_api_key=settings.OPENAI_API_KEY,
-    ollama_base_url=settings.OLLAMA_BASE_URL,
 ).model_dump()
+
+
+# ── 5. AI Configuration APIs ─────────────────────────────────
+
+@router.get("/ai-config")
+async def get_ai_config(admin_user: AdminOnly):
+    """
+    Get AI service configuration.
+    """
+    return _ai_config
+
+
+@router.put("/ai-config")
+async def update_ai_config(req: AIConfigRequest, admin_user: AdminOnly):
+    """
+    Update AI service configuration (Gemini settings).
+    """
+    global _ai_config
+    _ai_config = req.model_dump()
+    settings.AI_PROVIDER = req.ai_provider
+    if req.gemini_api_key:
+        settings.GEMINI_API_KEY = req.gemini_api_key
+    if req.openai_api_key:
+        settings.OPENAI_API_KEY = req.openai_api_key
+    return _ai_config
+
+
+@router.get("/ai-health")
+@router.get("/ai/health")
+async def get_ai_health():
+    """
+    Returns AI provider diagnostic status for Gemini.
+    """
+    from app.services.ai_service import AIService
+    gemini_health = await AIService.check_gemini_health()
+    return {
+        "gemini": gemini_health
+    }
 
 
 # ── 1. GET /api/admin/dashboard ──────────────────────────────
@@ -87,11 +123,11 @@ async def get_admin_dashboard(
     total_admins = await db.fetchval("SELECT COUNT(*) FROM users WHERE role = 'admin'") or 0
     
     active_sessions = await db.fetchval(
-        "SELECT COUNT(*) FROM interview_sessions WHERE status IN ('created', 'in_progress')"
+        "SELECT COUNT(*) FROM interview_sessions WHERE status IN ('created', 'in_progress') AND (is_mock IS FALSE OR is_mock IS NULL)"
     ) or 0
     
     completed_sessions = await db.fetchval(
-        "SELECT COUNT(*) FROM interview_sessions WHERE status = 'completed'"
+        "SELECT COUNT(*) FROM interview_sessions WHERE status = 'completed' AND (is_mock IS FALSE OR is_mock IS NULL)"
     ) or 0
     
     total_questions = await db.fetchval("SELECT COUNT(*) FROM interview_questions") or 0
@@ -101,7 +137,7 @@ async def get_admin_dashboard(
     )
 
     recent_sessions = await db.fetch(
-        "SELECT id, job_role, domain, interview_type, difficulty, status, created_at FROM interview_sessions ORDER BY created_at DESC LIMIT 5"
+        "SELECT id, job_role, domain, interview_type, difficulty, status, created_at FROM interview_sessions WHERE (is_mock IS FALSE OR is_mock IS NULL) ORDER BY created_at DESC LIMIT 5"
     )
 
     activities = []
@@ -278,7 +314,7 @@ async def list_recruiters(
         SELECT u.id, u.name, u.email, u.avatar_url, u.is_active, u.created_at, u.last_login_at,
                COUNT(s.id) as total_interviews_created
         FROM users u
-        LEFT JOIN interview_sessions s ON s.created_by = u.id
+        LEFT JOIN interview_sessions s ON s.created_by = u.id AND (s.is_mock IS FALSE OR s.is_mock IS NULL)
         WHERE u.role = 'recruiter'
         GROUP BY u.id
         ORDER BY u.created_at DESC
@@ -410,8 +446,8 @@ async def get_admin_analytics(
     """
     Returns analytics data for Recharts graphs.
     """
-    total_created = await db.fetchval("SELECT COUNT(*) FROM interview_sessions") or 0
-    total_completed = await db.fetchval("SELECT COUNT(*) FROM interview_sessions WHERE status = 'completed'") or 0
+    total_created = await db.fetchval("SELECT COUNT(*) FROM interview_sessions WHERE (is_mock IS FALSE OR is_mock IS NULL)") or 0
+    total_completed = await db.fetchval("SELECT COUNT(*) FROM interview_sessions WHERE status = 'completed' AND (is_mock IS FALSE OR is_mock IS NULL)") or 0
     total_questions = await db.fetchval("SELECT COUNT(*) FROM interview_questions") or 0
 
     # Monthly / Daily trend mock data formatted for Recharts

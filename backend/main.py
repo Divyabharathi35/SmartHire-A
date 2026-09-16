@@ -50,6 +50,8 @@ frontend_url_clean = settings.FRONTEND_URL.rstrip('/')
 allowed_origins = list(set([
     frontend_url_clean,
     f"{frontend_url_clean}/",
+    "https://frontend-1-orcin-ten.vercel.app",
+    "https://ai-mock-interview-and-candidate-4zzn.onrender.com",
     "https://neon-cannoli-d7aebc.netlify.app",
     "http://localhost:5173",
     "http://127.0.0.1:5173",
@@ -59,9 +61,11 @@ allowed_origins = list(set([
 app.add_middleware(
     CORSMiddleware,
     allow_origins=allowed_origins,
+    allow_origin_regex=r"^https:\/\/.*\.vercel\.app$",
     allow_credentials=True,            # Required for cookies and auth headers
     allow_methods=["*"],
     allow_headers=["*"],
+    expose_headers=["*"],
 )
 
 # ── Routers ──────────────────────────────────────────────────

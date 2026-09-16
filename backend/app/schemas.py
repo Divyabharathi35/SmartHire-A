@@ -125,6 +125,7 @@ class AuthResponse(BaseModel):
     success: bool
     message: str
     user: UserResponse
+    token: Optional[str] = None
 
 
 class MessageResponse(BaseModel):

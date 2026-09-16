@@ -77,7 +77,7 @@ async def register(body: RegisterRequest, response: Response, db: asyncpg.Connec
     token = create_access_token({"id": str(user["id"]), "email": user["email"], "role": role_str, "name": user["name"]})
     _set_auth_cookie(response, token)
 
-    return AuthResponse(success=True, message="Account created successfully.", user=_row_to_user(user))
+    return AuthResponse(success=True, message="Account created successfully.", user=_row_to_user(user), token=token)
 
 
 # ──────────────────────────────────────────────
@@ -128,7 +128,7 @@ async def login(body: LoginRequest, request: Request, response: Response, db: as
 
     print(f"[AUTH DIAGNOSTIC] Email: {masked_email} | Origin: {origin_header} | Found: True | Active: True | PwVerify: True | Status: 200 | Set-Cookie: True")
 
-    return AuthResponse(success=True, message="Login successful.", user=_row_to_user(user))
+    return AuthResponse(success=True, message="Login successful.", user=_row_to_user(user), token=token)
 
 
 # ──────────────────────────────────────────────

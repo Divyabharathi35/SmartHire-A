@@ -18,8 +18,9 @@ class Settings(BaseSettings):
     JWT_ALGORITHM: str = "HS256"
     ACCESS_TOKEN_EXPIRE_MINUTES: int = 10080  # 7 days
 
-    # CORS
+    # CORS & URLs
     FRONTEND_URL: str = "http://localhost:5173"
+    BACKEND_URL: str = ""
 
     # App
     ENVIRONMENT: Literal["development", "production"] = "development"

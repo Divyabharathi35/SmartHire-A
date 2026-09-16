@@ -1,5 +1,5 @@
 import { createContext, useContext, useState, useEffect, useCallback } from 'react';
-import { apiFetch, clearAuthToken, safeJsonParse } from '../api/apiClient';
+import { apiFetch, clearAuthToken, setAuthToken, safeJsonParse } from '../api/apiClient';
 
 const AuthContext = createContext(null);
 
@@ -8,16 +8,21 @@ export function AuthProvider({ children }) {
   const [isLoading,       setIsLoading]       = useState(true); // true while restoring session
   const [isAuthenticated, setIsAuthenticated] = useState(false);
 
-  // ── Restore session from HTTP-only cookie on mount ──
+  // ── Restore session from HTTP-only cookie or Authorization token on mount ──
   useEffect(() => {
     restoreSession();
   }, []);
 
   async function restoreSession() {
     try {
-      // Check for OAuth redirect
+      // Check for OAuth redirect or token in URL
       const params = new URLSearchParams(window.location.search);
       const oauthResult = params.get('oauth');
+      const urlToken = params.get('token');
+
+      if (urlToken) {
+        setAuthToken(urlToken);
+      }
 
       if (oauthResult === 'error') {
         const provider = params.get('provider') || 'OAuth';
@@ -33,7 +38,7 @@ export function AuthProvider({ children }) {
         return;
       }
 
-      if (oauthResult === 'success') {
+      if (oauthResult === 'success' || urlToken) {
         window.history.replaceState({}, '', window.location.pathname);
       }
 
@@ -89,6 +94,10 @@ export function AuthProvider({ children }) {
       throw new Error('Login succeeded but user data was missing in response');
     }
 
+    if (data?.token) {
+      setAuthToken(data.token);
+    }
+
     const normalizedRole = returnedUser?.role ? String(returnedUser.role).toLowerCase().trim() : null;
 
     console.log('[AuthContext] Stored User Object:', returnedUser);
@@ -118,6 +127,10 @@ export function AuthProvider({ children }) {
     const returnedUser = data?.user;
     if (!returnedUser) {
       throw new Error('Registration succeeded but user data was missing in response');
+    }
+
+    if (data?.token) {
+      setAuthToken(data.token);
     }
 
     const normalizedRole = returnedUser?.role ? String(returnedUser.role).toLowerCase().trim() : null;

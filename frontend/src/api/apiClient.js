@@ -6,22 +6,37 @@
 export const API_BASE = (import.meta.env.VITE_API_URL || '').replace(/\/+$/, '');
 
 export function getAuthToken() {
-  return '';
+  try {
+    return localStorage.getItem('smarthire_token') || localStorage.getItem('token') || '';
+  } catch (_e) {
+    return '';
+  }
 }
 
-export function setAuthToken(_token) {
-  // No-op: Auth tokens are delivered strictly via HttpOnly cookies
+export function setAuthToken(token) {
+  try {
+    if (token) {
+      localStorage.setItem('smarthire_token', token);
+    } else {
+      localStorage.removeItem('smarthire_token');
+    }
+  } catch (_e) {}
 }
 
 export function clearAuthToken() {
-  localStorage.removeItem('smarthire_token');
-  localStorage.removeItem('token');
-  localStorage.removeItem('access_token');
+  try {
+    localStorage.removeItem('smarthire_token');
+    localStorage.removeItem('token');
+    localStorage.removeItem('access_token');
+  } catch (_e) {}
 }
 
 export function getAuthHeaders(customHeaders = {}) {
   const headers = { ...customHeaders };
-  delete headers['Authorization'];
+  const token = getAuthToken();
+  if (token && !headers['Authorization'] && !headers['authorization']) {
+    headers['Authorization'] = `Bearer ${token}`;
+  }
   return headers;
 }
 

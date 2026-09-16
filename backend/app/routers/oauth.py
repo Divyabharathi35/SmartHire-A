@@ -1,12 +1,13 @@
 # ============================================================
 #  routers/oauth.py — Google & GitHub OAuth endpoints
 # ============================================================
+import os
 from datetime import datetime, timezone
 from urllib.parse import urlencode
 
 import asyncpg
 import httpx
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends, HTTPException, Request, status
 from fastapi.responses import RedirectResponse
 
 from app.config import settings
@@ -16,6 +17,43 @@ from app.security import create_access_token
 router = APIRouter(prefix="/api/auth", tags=["OAuth"])
 
 COOKIE_MAX_AGE = settings.ACCESS_TOKEN_EXPIRE_MINUTES * 60
+
+
+def _get_backend_url(request: Request) -> str:
+    """Dynamically determine the backend base URL for OAuth callbacks."""
+    # 1. Configured BACKEND_URL setting or environment variable
+    backend_url = getattr(settings, "BACKEND_URL", "").strip().rstrip("/")
+    if backend_url:
+        return backend_url
+
+    # 2. Render provides RENDER_EXTERNAL_URL automatically for web services
+    render_url = os.environ.get("RENDER_EXTERNAL_URL", "").strip().rstrip("/")
+    if render_url:
+        return render_url
+
+    # 3. Check proxy headers (x-forwarded-proto, x-forwarded-host)
+    proto = request.headers.get("x-forwarded-proto", "").strip()
+    host = request.headers.get("x-forwarded-host", "").strip()
+    if host:
+        scheme = proto or "https"
+        return f"{scheme}://{host}".rstrip("/")
+
+    host = request.headers.get("host", "").strip()
+    if host:
+        scheme = proto or ("https" if request.url.is_secure else "http")
+        return f"{scheme}://{host}".rstrip("/")
+
+    # 4. Fallback to request.base_url
+    base = str(request.base_url).rstrip("/")
+    if proto == "https" and base.startswith("http://"):
+        base = "https://" + base[7:]
+    return base
+
+
+def _get_redirect_uri(request: Request, provider: str) -> str:
+    """Generate the exact redirect URI expected by OAuth providers."""
+    base = _get_backend_url(request)
+    return f"{base}/api/auth/{provider}/callback"
 
 
 def _set_auth_cookie(response: RedirectResponse, token: str):
@@ -80,11 +118,12 @@ GOOGLE_USERINFO_URL = "https://www.googleapis.com/oauth2/v2/userinfo"
 
 
 @router.get("/google", tags=["OAuth"])
-async def google_login():
+async def google_login(request: Request):
     """Redirect the user to Google's consent screen."""
+    redirect_uri = _get_redirect_uri(request, "google")
     params = {
         "client_id": settings.GOOGLE_CLIENT_ID,
-        "redirect_uri": f"http://localhost:5000/api/auth/google/callback",
+        "redirect_uri": redirect_uri,
         "response_type": "code",
         "scope": "openid email profile",
         "access_type": "offline",
@@ -94,9 +133,15 @@ async def google_login():
 
 
 @router.get("/google/callback", tags=["OAuth"])
-async def google_callback(code: str = "", error: str = "", db: asyncpg.Connection = Depends(get_db)):
+async def google_callback(
+    request: Request,
+    code: str = "",
+    error: str = "",
+    db: asyncpg.Connection = Depends(get_db),
+):
     """Handle Google's OAuth callback."""
-    frontend_url = settings.FRONTEND_URL
+    frontend_url = settings.FRONTEND_URL.rstrip("/")
+    redirect_uri = _get_redirect_uri(request, "google")
 
     if error or not code:
         return RedirectResponse(f"{frontend_url}/?oauth=error&provider=google")
@@ -110,7 +155,7 @@ async def google_callback(code: str = "", error: str = "", db: asyncpg.Connectio
                     "code": code,
                     "client_id": settings.GOOGLE_CLIENT_ID,
                     "client_secret": settings.GOOGLE_CLIENT_SECRET,
-                    "redirect_uri": "http://localhost:5000/api/auth/google/callback",
+                    "redirect_uri": redirect_uri,
                     "grant_type": "authorization_code",
                 },
                 headers={"Accept": "application/json"},
@@ -118,6 +163,7 @@ async def google_callback(code: str = "", error: str = "", db: asyncpg.Connectio
             token_data = token_res.json()
 
             if "access_token" not in token_data:
+                print(f"[OAuth] Google token exchange failed: {token_data}")
                 return RedirectResponse(f"{frontend_url}/?oauth=error&provider=google")
 
             # Fetch user profile
@@ -128,7 +174,7 @@ async def google_callback(code: str = "", error: str = "", db: asyncpg.Connectio
             profile = profile_res.json()
 
         email = profile.get("email")
-        name = profile.get("name", email.split("@")[0])
+        name = profile.get("name", email.split("@")[0]) if email else "User"
         avatar_url = profile.get("picture")
 
         if not email:
@@ -148,7 +194,7 @@ async def google_callback(code: str = "", error: str = "", db: asyncpg.Connectio
             "name": user["name"],
         })
 
-        response = RedirectResponse(f"{frontend_url}/?oauth=success", status_code=302)
+        response = RedirectResponse(f"{frontend_url}/?oauth=success&token={token}", status_code=302)
         _set_auth_cookie(response, token)
         return response
 
@@ -168,20 +214,27 @@ GITHUB_EMAILS_URL = "https://api.github.com/user/emails"
 
 
 @router.get("/github", tags=["OAuth"])
-async def github_login():
+async def github_login(request: Request):
     """Redirect the user to GitHub's consent screen."""
+    redirect_uri = _get_redirect_uri(request, "github")
     params = {
         "client_id": settings.GITHUB_CLIENT_ID,
-        "redirect_uri": "http://localhost:5000/api/auth/github/callback",
+        "redirect_uri": redirect_uri,
         "scope": "read:user user:email",
     }
     return RedirectResponse(f"{GITHUB_AUTH_URL}?{urlencode(params)}")
 
 
 @router.get("/github/callback", tags=["OAuth"])
-async def github_callback(code: str = "", error: str = "", db: asyncpg.Connection = Depends(get_db)):
+async def github_callback(
+    request: Request,
+    code: str = "",
+    error: str = "",
+    db: asyncpg.Connection = Depends(get_db),
+):
     """Handle GitHub's OAuth callback."""
-    frontend_url = settings.FRONTEND_URL
+    frontend_url = settings.FRONTEND_URL.rstrip("/")
+    redirect_uri = _get_redirect_uri(request, "github")
 
     if error or not code:
         return RedirectResponse(f"{frontend_url}/?oauth=error&provider=github")
@@ -195,7 +248,7 @@ async def github_callback(code: str = "", error: str = "", db: asyncpg.Connectio
                     "client_id": settings.GITHUB_CLIENT_ID,
                     "client_secret": settings.GITHUB_CLIENT_SECRET,
                     "code": code,
-                    "redirect_uri": "http://localhost:5000/api/auth/github/callback",
+                    "redirect_uri": redirect_uri,
                 },
                 headers={"Accept": "application/json"},
             )
@@ -203,6 +256,7 @@ async def github_callback(code: str = "", error: str = "", db: asyncpg.Connectio
 
             access_token = token_data.get("access_token")
             if not access_token:
+                print(f"[OAuth] GitHub token exchange failed: {token_data}")
                 return RedirectResponse(f"{frontend_url}/?oauth=error&provider=github")
 
             auth_headers = {
@@ -251,10 +305,11 @@ async def github_callback(code: str = "", error: str = "", db: asyncpg.Connectio
             "name": user["name"],
         })
 
-        response = RedirectResponse(f"{frontend_url}/?oauth=success", status_code=302)
+        response = RedirectResponse(f"{frontend_url}/?oauth=success&token={token}", status_code=302)
         _set_auth_cookie(response, token)
         return response
 
     except Exception as exc:
         print(f"[OAuth] GitHub callback error: {exc}")
         return RedirectResponse(f"{frontend_url}/?oauth=error&provider=github")
+

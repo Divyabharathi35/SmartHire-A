@@ -22,7 +22,7 @@ const navConfig = {
     { id: 'comparison', label: 'Comparison Dashboard',icon: GitCompare },
     { id: 'builder',    label: 'Template Builder',    icon: Layout },
     { id: 'analytics',  label: 'Performance & Analytics', icon: BarChart2 },
-    { id: 'sessions',   label: 'Active Sessions',     icon: MonitorPlay, badge: '4' },
+    { id: 'sessions',   label: 'Active Sessions',     icon: MonitorPlay },
   ],
   admin: [
     { id: 'overview',   label: 'Dashboard',           icon: LayoutDashboard },

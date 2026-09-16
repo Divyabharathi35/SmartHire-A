@@ -1,25 +1,19 @@
 // ============================================================
 //  SystemMonitor.jsx — Real-time System Monitoring & Logs
 // ============================================================
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { Activity, Server, Cpu, Database, ShieldCheck, Terminal, RefreshCw, CheckCircle2 } from 'lucide-react';
-
-const API_BASE = import.meta.env.VITE_API_URL || 'http://localhost:5000';
+import { apiFetch } from '../../api/apiClient';
 
 export default function SystemMonitor() {
   const [data, setData]       = useState(null);
   const [loading, setLoading] = useState(true);
 
-  useEffect(() => {
-    fetchMonitoring();
-  }, []);
-
-  const fetchMonitoring = async () => {
+  const fetchMonitoring = useCallback(async () => {
     setLoading(true);
     try {
-      const res = await fetch(`${API_BASE}/api/admin/monitoring`, {
+      const res = await apiFetch('/api/admin/monitoring', {
         method: 'GET',
-        credentials: 'include',
       });
       if (res.ok) {
         const json = await res.json();
@@ -30,30 +24,29 @@ export default function SystemMonitor() {
     } finally {
       setLoading(false);
     }
-  };
+  }, []);
+
+  useEffect(() => {
+    fetchMonitoring();
+  }, [fetchMonitoring]);
 
   const health = data?.system_health || {
-    status: 'Operational',
-    uptime: '99.98%',
-    cpu_usage: '14%',
-    memory_usage: '41%',
-    db_pool_active: 3,
-    db_pool_max: 20
+    status: data?.status || 'Operational',
+    uptime: data?.uptime || '—',
+    cpu_usage: data?.cpu_usage || '—',
+    memory_usage: data?.memory_usage || '—',
+    db_pool_active: data?.db_pool_active ?? 0,
+    db_pool_max: data?.db_pool_max ?? 0
   };
 
   const metrics = data?.api_usage_metrics || {
-    total_requests_24h: 1420,
-    ai_generation_calls: 380,
-    evaluations_performed: 290,
-    avg_response_time_ms: 145
+    total_requests_24h: data?.total_requests_24h ?? 0,
+    ai_generation_calls: data?.ai_generation_calls ?? 0,
+    evaluations_performed: data?.evaluations_performed ?? 0,
+    avg_response_time_ms: data?.avg_response_time_ms ?? 0
   };
 
-  const logs = data?.logs || [
-    { id: '1', level: 'INFO', message: 'FastAPI Uvicorn server running cleanly on port 5000', timestamp: 'Just now', source: 'System' },
-    { id: '2', level: 'SUCCESS', message: 'PostgreSQL connection pool established (3 active, 20 max)', timestamp: '5 mins ago', source: 'Database' },
-    { id: '3', level: 'INFO', message: 'Gemini 1.5 Flash AI Service active & responsive', timestamp: '12 mins ago', source: 'AI Service' },
-    { id: '4', level: 'INFO', message: 'JWT HTTP-Only session restored for user admin@smarthire.ai', timestamp: '20 mins ago', source: 'Security' },
-  ];
+  const logs = data?.logs || [];
 
   return (
     <div className="animate-fade-in-up" style={{ padding: '24px', maxWidth: '1100px', margin: '0 auto' }}>

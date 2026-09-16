@@ -1,5 +1,5 @@
 import { createContext, useContext, useState, useEffect, useCallback } from 'react';
-import { apiFetch, clearAuthToken } from '../api/apiClient';
+import { apiFetch, clearAuthToken, safeJsonParse } from '../api/apiClient';
 
 const AuthContext = createContext(null);
 
@@ -39,20 +39,30 @@ export function AuthProvider({ children }) {
 
       const res = await apiFetch('/api/auth/me', { method: 'GET' });
       if (res.ok) {
-        const data = await res.json();
-        const returnedUser = data.user;
-        const normalizedRole = returnedUser?.role ? String(returnedUser.role).toLowerCase().trim() : null;
-        
-        console.log('[AuthContext] Session Restored User Object:', returnedUser);
-        console.log('[AuthContext] Session Restored Role:', normalizedRole);
+        const data = await safeJsonParse(res);
+        const returnedUser = data?.user;
+        if (returnedUser) {
+          const normalizedRole = returnedUser?.role ? String(returnedUser.role).toLowerCase().trim() : null;
+          
+          console.log('[AuthContext] Session Restored User Object:', returnedUser);
+          console.log('[AuthContext] Session Restored Role:', normalizedRole);
 
-        setUser(returnedUser);
-        setIsAuthenticated(true);
+          setUser(returnedUser);
+          setIsAuthenticated(true);
+        } else {
+          console.log('[AuthContext] Session Restore: res.ok true but no user data object');
+          setUser(null);
+          setIsAuthenticated(false);
+        }
       } else {
         console.log('[AuthContext] Session Restore: No active session (HTTP', res.status, ')');
+        setUser(null);
+        setIsAuthenticated(false);
       }
     } catch (err) {
       console.error('[AuthContext] Error restoring session:', err);
+      setUser(null);
+      setIsAuthenticated(false);
     } finally {
       setIsLoading(false);
     }
@@ -66,12 +76,19 @@ export function AuthProvider({ children }) {
       headers: { 'Content-Type': 'application/json' },
       body:    JSON.stringify({ email, password }),
     });
-    const data = await res.json();
-    console.log('[AuthContext] Login API Response:', data);
+    const data = await safeJsonParse(res);
+    console.log('[AuthContext] Login API Response (status ' + res.status + '):', data);
 
-    if (!res.ok) throw new Error(data.message || 'Login failed');
+    if (!res.ok) {
+      const errorMsg = data?.detail || data?.message || (res.status === 401 ? 'Invalid email or password' : `Login failed (HTTP ${res.status})`);
+      throw new Error(errorMsg);
+    }
     
-    const returnedUser = data.user;
+    const returnedUser = data?.user;
+    if (!returnedUser) {
+      throw new Error('Login succeeded but user data was missing in response');
+    }
+
     const normalizedRole = returnedUser?.role ? String(returnedUser.role).toLowerCase().trim() : null;
 
     console.log('[AuthContext] Stored User Object:', returnedUser);
@@ -90,15 +107,19 @@ export function AuthProvider({ children }) {
       headers: { 'Content-Type': 'application/json' },
       body:    JSON.stringify({ name, email, password, role }),
     });
-    const data = await res.json();
+    const data = await safeJsonParse(res);
     console.log('[AuthContext] Register API Response:', data);
 
     if (!res.ok) {
-      if (data.errors?.length) throw new Error(data.errors[0].msg);
-      throw new Error(data.message || 'Registration failed');
+      if (data?.errors?.length) throw new Error(data.errors[0].msg);
+      throw new Error(data?.detail || data?.message || `Registration failed (HTTP ${res.status})`);
     }
     
-    const returnedUser = data.user;
+    const returnedUser = data?.user;
+    if (!returnedUser) {
+      throw new Error('Registration succeeded but user data was missing in response');
+    }
+
     const normalizedRole = returnedUser?.role ? String(returnedUser.role).toLowerCase().trim() : null;
 
     console.log('[AuthContext] Stored Registered User Object:', returnedUser);
@@ -108,6 +129,7 @@ export function AuthProvider({ children }) {
     setIsAuthenticated(true);
     return returnedUser;
   }, []);
+
 
   // ── Logout ──
   const logout = useCallback(async () => {

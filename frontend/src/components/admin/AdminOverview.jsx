@@ -1,54 +1,47 @@
 // ============================================================
 //  AdminOverview.jsx — Main Dedicated Admin Dashboard Overview
 // ============================================================
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { Users, UserCheck, ShieldCheck, Video, Sparkles, Activity, CheckCircle, Clock, AlertTriangle, ArrowRight, Shield } from 'lucide-react';
-
-const API_BASE = import.meta.env.VITE_API_URL || 'http://localhost:5000';
+import { apiFetch } from '../../api/apiClient';
 
 export default function AdminOverview({ onTabChange }) {
   const [data, setData]       = useState(null);
   const [loading, setLoading] = useState(true);
 
-  useEffect(() => {
-    fetchDashboard();
-  }, []);
-
-  const fetchDashboard = async () => {
+  const fetchDashboard = useCallback(async () => {
     setLoading(true);
     try {
-      const res = await fetch(`${API_BASE}/api/admin/dashboard`, {
+      const res = await apiFetch('/api/admin/dashboard', {
         method: 'GET',
-        credentials: 'include',
       });
       if (res.ok) {
         const json = await res.json();
         setData(json);
       }
     } catch (_err) {
-      /* fallback */
+      /* ignore */
     } finally {
       setLoading(false);
     }
-  };
+  }, []);
+
+  useEffect(() => {
+    fetchDashboard();
+  }, [fetchDashboard]);
 
   const stats = data?.stats || {
-    total_users: 128,
-    total_recruiters: 14,
-    total_candidates: 110,
-    total_admins: 4,
-    active_interview_sessions: 18,
-    completed_interview_sessions: 340,
-    ai_questions_generated: 1450,
-    system_status: 'Healthy & Operational',
+    total_users: data?.total_users ?? 0,
+    total_recruiters: data?.total_recruiters ?? 0,
+    total_candidates: data?.total_candidates ?? 0,
+    total_admins: data?.total_admins ?? 0,
+    active_interview_sessions: data?.active_interview_sessions ?? 0,
+    completed_interview_sessions: data?.completed_interview_sessions ?? 0,
+    ai_questions_generated: data?.ai_questions_generated ?? 0,
+    system_status: data?.system_status || 'Operational',
   };
 
-  const activities = data?.recent_activities || [
-    { id: '1', title: 'New Recruiter Approved: Sarah Jenkins', description: 'Assigned full template & candidate interview permissions', timestamp: '10 mins ago', badge: 'Recruiter' },
-    { id: '2', title: 'AI Questions Generated: Senior Full Stack Developer', description: '5 Technical questions generated via Gemini 1.5 Flash', timestamp: '25 mins ago', badge: 'AI Service' },
-    { id: '3', title: 'Interview Session Completed: Candidate Alex Vance', description: 'Overall score: 88.5% with detailed feedback report', timestamp: '1 hour ago', badge: 'Interview' },
-    { id: '4', title: 'Platform Security Audit', description: 'All OAuth 2.0 and JWT token validations passed 100%', timestamp: '3 hours ago', badge: 'Security' },
-  ];
+  const activities = Array.isArray(data?.recent_activities) ? data.recent_activities : (Array.isArray(data?.activities) ? data.activities : []);
 
   return (
     <div className="animate-fade-in-up" style={{ padding: '24px', maxWidth: '1100px', margin: '0 auto' }}>

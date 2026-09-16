@@ -5,6 +5,7 @@ import { useState, useEffect } from 'react';
 import { Sparkles, Cpu, BookOpen, Layers, Target, FileText, CheckCircle, AlertCircle, ArrowRight, UserCheck } from 'lucide-react';
 import QuestionPreview from './QuestionPreview';
 import InterviewSession from './InterviewSession';
+import { apiFetch } from '../../api/apiClient';
 
 const INTERVIEW_TYPES = [
   { id: 'Technical Interview', label: 'Technical Interview', desc: 'Core engineering concepts, coding logic, system design & algorithms' },
@@ -37,18 +38,16 @@ const DOMAINS = [
   'Other',
 ];
 
-const API_BASE = import.meta.env.VITE_API_URL || 'http://localhost:5000';
-
 export default function InterviewGenerator({ onSessionStart }) {
-  const [jobRole, setJobRole]               = useState('Senior Full Stack Developer');
+  const [jobRole, setJobRole]               = useState('Full Stack Developer');
   const [domain, setDomain]                 = useState('Software Development');
   const [interviewType, setInterviewType]   = useState('Technical Interview');
   const [difficulty, setDifficulty]         = useState('Medium');
   const [experienceLevel, setExperienceLevel] = useState('Mid Level (3-5 yrs)');
   const [numQuestions, setNumQuestions]     = useState(5);
-  const [userSkills, setUserSkills]         = useState('React, Node.js, TypeScript, PostgreSQL, REST APIs');
-  const [jobDescription, setJobDescription] = useState('Looking for an experienced engineer to lead modern web app architecture.');
-  const [resumeText, setResumeText]         = useState('5+ years full stack engineering experience building scalable microservices.');
+  const [userSkills, setUserSkills]         = useState('');
+  const [jobDescription, setJobDescription] = useState('');
+  const [resumeText, setResumeText]         = useState('');
   const [selectedCandidateId, setSelectedCandidateId] = useState('');
 
   const [candidates, setCandidates] = useState([]);
@@ -63,13 +62,10 @@ export default function InterviewGenerator({ onSessionStart }) {
 
   const fetchCandidates = async () => {
     try {
-      const res = await fetch(`${API_BASE}/api/candidates`, {
-        method: 'GET',
-        credentials: 'include',
-      });
+      const res = await apiFetch('/api/candidates', { method: 'GET' });
       if (res.ok) {
         const data = await res.json();
-        setCandidates(data);
+        setCandidates(data || []);
       }
     } catch (_e) {
       /* ignore */
@@ -95,24 +91,29 @@ export default function InterviewGenerator({ onSessionStart }) {
       user_skills: userSkills,
       job_description: jobDescription,
       resume_text: resumeText,
-      generation_seed: `${Date.now()}_${Math.random().toString(36).substring(2, 9)}`,
+      generation_seed: `${Date.now()}_${Math.floor(performance.now())}`,
     };
 
     console.log('[AI Question Generator] Sending payload to /api/questions/generate:', payload);
 
     try {
-      const res = await fetch(`${API_BASE}/api/questions/generate`, {
+      const res = await apiFetch('/api/questions/generate', {
         method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        credentials: 'include',
+        headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(payload),
       });
 
       if (!res.ok) {
         const errData = await res.json().catch(() => ({}));
-        throw new Error(errData.detail || `Server returned ${res.status}: Failed to generate AI questions`);
+        let errMsg = `Server returned ${res.status}: Failed to generate AI questions`;
+        if (typeof errData.detail === 'string') {
+          errMsg = errData.detail;
+        } else if (Array.isArray(errData.detail)) {
+          errMsg = errData.detail.map((e) => e.msg || JSON.stringify(e)).join(', ');
+        } else if (errData.detail && typeof errData.detail === 'object') {
+          errMsg = errData.detail.msg || errData.detail.message || JSON.stringify(errData.detail);
+        }
+        throw new Error(errMsg);
       }
 
       let questions = await res.json();
@@ -137,7 +138,7 @@ export default function InterviewGenerator({ onSessionStart }) {
         let fallbackIdx = 0;
         questions = questions.map((q, idx) => {
           const qText = (q.question_text || '').toLowerCase();
-          const isTech = techKeywords.some(kw => qText.includes(kw));
+          const isTech = techKeywords.some(kw => kw && qText.includes(kw));
           if (isTech) {
             const replacementText = hrFallbacks[fallbackIdx % hrFallbacks.length];
             fallbackIdx++;
@@ -162,13 +163,9 @@ export default function InterviewGenerator({ onSessionStart }) {
       console.error('[AI Question Generator] Error during question generation:', err);
       let friendlyMsg = err.message || 'Error generating questions';
       if (err.message === 'Failed to fetch') {
-        friendlyMsg = `Failed to connect to backend AI server (${API_BASE}). Please check if FastAPI server is running.`;
+        friendlyMsg = 'Failed to connect to backend AI server. Please check your network connection.';
       }
-      // The backend now returns specific, safe error categories in the detail field.
-      // Display the backend message directly — it never contains secrets.
-      // No longer override with a generic "AI service temporarily unavailable" message.
       setError(friendlyMsg);
-      throw new Error(friendlyMsg);
     } finally {
       setLoading(false);
     }
@@ -178,10 +175,9 @@ export default function InterviewGenerator({ onSessionStart }) {
     setLoading(true);
     setError('');
     try {
-      const res = await fetch(`${API_BASE}/api/sessions`, {
+      const res = await apiFetch('/api/sessions', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        credentials: 'include',
         body: JSON.stringify({
           job_role: jobRole,
           domain,
@@ -199,7 +195,15 @@ export default function InterviewGenerator({ onSessionStart }) {
 
       if (!res.ok) {
         const errData = await res.json().catch(() => ({}));
-        throw new Error(errData.detail || 'Failed to create interview session');
+        let errMsg = 'Failed to create interview session';
+        if (typeof errData.detail === 'string') {
+          errMsg = errData.detail;
+        } else if (Array.isArray(errData.detail)) {
+          errMsg = errData.detail.map((e) => e.msg || JSON.stringify(e)).join(', ');
+        } else if (errData.detail && typeof errData.detail === 'object') {
+          errMsg = errData.detail.msg || errData.detail.message || JSON.stringify(errData.detail);
+        }
+        throw new Error(errMsg);
       }
 
       const session = await res.json();

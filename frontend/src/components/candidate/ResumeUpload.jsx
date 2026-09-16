@@ -1,245 +1,206 @@
 import { useState, useCallback } from 'react';
-import { Upload, FileText, CheckCircle, Sparkles, X, RefreshCw } from 'lucide-react';
-import { extractedSkills } from '../../data/mockData';
-import { RadarChart, Radar, PolarGrid, PolarAngleAxis, ResponsiveContainer } from 'recharts';
+import { Upload, FileText, CheckCircle, Sparkles, RefreshCw } from 'lucide-react';
+import ErrorBoundary from '../common/ErrorBoundary';
 
-const radarData = extractedSkills.map(s => ({ subject: s.name, A: s.score, fullMark: 100 }));
-
-const steps = ['uploading', 'parsing', 'extracting', 'complete'];
-const stepLabels = ['Uploading file...', 'Parsing resume content...', 'Extracting skills & scoring...', 'Analysis complete!'];
+const steps = ['uploading', 'parsing', 'complete'];
+const stepLabels = ['Uploading resume file...', 'Extracting resume details...', 'Resume upload complete!'];
 
 export default function ResumeUpload() {
   const [dragging, setDragging] = useState(false);
   const [file, setFile] = useState(null);
   const [step, setStep] = useState(-1); // -1 = idle
 
-  const simulateParsing = (f) => {
+  const processFile = (f) => {
+    if (!f) return;
     setFile(f);
     setStep(0);
-    let s = 0;
-    const tick = () => {
-      s++;
-      if (s < steps.length) {
-        setTimeout(() => { setStep(s); tick(); }, 900 + Math.random() * 400);
-      }
-    };
-    tick();
+    setTimeout(() => {
+      setStep(1);
+      setTimeout(() => {
+        setStep(2);
+      }, 600);
+    }, 600);
   };
 
   const handleDrop = useCallback((e) => {
     e.preventDefault();
     setDragging(false);
     const f = e.dataTransfer.files[0];
-    if (f) simulateParsing(f);
+    if (f) processFile(f);
   }, []);
 
   const handleFileInput = (e) => {
     const f = e.target.files[0];
-    if (f) simulateParsing(f);
+    if (f) processFile(f);
   };
 
   const reset = () => { setFile(null); setStep(-1); };
   const isDone = step === steps.length - 1;
 
   return (
-    <div className="animate-fade-in-up">
-      <div className="page-header">
-        <h1>Resume Upload</h1>
-        <p>Upload your resume to get AI-powered skill extraction, gap analysis, and ATS scoring</p>
-      </div>
-
-      <div className="grid-2" style={{ gap: 'var(--space-8)', alignItems: 'start' }}>
-        {/* Upload Zone */}
-        <div>
-          {step === -1 ? (
-            <div
-              className={`drop-zone ${dragging ? 'dragging' : ''}`}
-              onDragOver={e => { e.preventDefault(); setDragging(true); }}
-              onDragLeave={() => setDragging(false)}
-              onDrop={handleDrop}
-              onClick={() => document.getElementById('resume-file-input').click()}
-              id="resume-drop-zone"
-            >
-              <input
-                type="file"
-                id="resume-file-input"
-                accept=".pdf,.doc,.docx"
-                style={{ display: 'none' }}
-                onChange={handleFileInput}
-              />
-              <div className="drop-zone-icon">📄</div>
-              <h3 style={{ marginBottom: 'var(--space-2)' }}>Drop your resume here</h3>
-              <p className="text-sm" style={{ marginBottom: 'var(--space-6)' }}>
-                Supports PDF, DOC, DOCX · Max 10MB
-              </p>
-              <button className="btn btn-primary" style={{ pointerEvents: 'none' }}>
-                <Upload size={16} />
-                Choose File
-              </button>
-            </div>
-          ) : (
-            <div className="card">
-              {/* File Info */}
-              <div className="flex items-center gap-4" style={{ marginBottom: 'var(--space-6)' }}>
-                <div style={{
-                  width: 48, height: 48, background: 'hsla(252,100%,68%,0.1)',
-                  borderRadius: 'var(--radius-md)', display: 'flex', alignItems: 'center', justifyContent: 'center'
-                }}>
-                  <FileText size={24} color="var(--accent-primary)" />
-                </div>
-                <div style={{ flex: 1 }}>
-                  <p style={{ fontWeight: 600, color: 'var(--text-primary)', fontSize: '0.9rem' }}>
-                    {file?.name || 'resume.pdf'}
-                  </p>
-                  <p className="text-xs text-muted">
-                    {file?.size ? (file.size / 1024).toFixed(1) + ' KB' : '248 KB'} · PDF Document
-                  </p>
-                </div>
-                {!isDone && (
-                  <div style={{ width: 20, height: 20, border: '2px solid var(--accent-primary)', borderTopColor: 'transparent', borderRadius: '50%', animation: 'spin 0.8s linear infinite' }} />
-                )}
-                {isDone && <CheckCircle size={20} color="var(--accent-green)" />}
-              </div>
-
-              {/* Progress Steps */}
-              <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-3)' }}>
-                {steps.map((s, i) => (
-                  <div key={s} className="flex items-center gap-3" style={{
-                    opacity: i > step ? 0.3 : 1,
-                    transition: 'opacity 0.4s ease'
-                  }}>
-                    <div style={{
-                      width: 24, height: 24, borderRadius: '50%', flexShrink: 0,
-                      background: i < step ? 'var(--accent-green)' : i === step ? 'var(--accent-primary)' : 'var(--border-medium)',
-                      display: 'flex', alignItems: 'center', justifyContent: 'center',
-                      fontSize: '0.7rem', fontWeight: 700, color: 'white',
-                      transition: 'background 0.4s ease'
-                    }}>
-                      {i < step ? '✓' : i + 1}
-                    </div>
-                    <span style={{ fontSize: '0.85rem', color: i <= step ? 'var(--text-primary)' : 'var(--text-muted)' }}>
-                      {stepLabels[i]}
-                    </span>
-                    {i === step && i < steps.length - 1 && (
-                      <div style={{ marginLeft: 'auto', width: 14, height: 14, border: '2px solid var(--accent-primary)', borderTopColor: 'transparent', borderRadius: '50%', animation: 'spin 0.8s linear infinite' }} />
-                    )}
-                  </div>
-                ))}
-              </div>
-
-              {isDone && (
-                <button className="btn btn-ghost btn-sm" style={{ marginTop: 'var(--space-6)', color: 'var(--text-muted)' }} onClick={reset}>
-                  <RefreshCw size={14} />
-                  Upload different file
-                </button>
-              )}
-            </div>
-          )}
-
-          {/* Resume Score Card */}
-          {isDone && (
-            <div className="card mt-6 animate-fade-in" style={{ background: 'linear-gradient(135deg, hsla(252,100%,68%,0.06), hsla(280,90%,65%,0.06))', border: '1px solid var(--border-accent)' }}>
-              <div className="flex items-center justify-between mb-4">
-                <h3 className="flex items-center gap-2">
-                  <Sparkles size={18} color="var(--accent-primary)" />
-                  ATS Resume Score
-                </h3>
-                <div style={{ fontSize: '2.5rem', fontFamily: 'var(--font-heading)', fontWeight: 700, color: 'var(--accent-primary)' }}>
-                  84<span style={{ fontSize: '1rem', color: 'var(--text-muted)' }}>/100</span>
-                </div>
-              </div>
-              <div className="progress-bar" style={{ height: 8, marginBottom: 'var(--space-4)' }}>
-                <div className="progress-fill" style={{ width: '84%' }} />
-              </div>
-              <div className="grid-3" style={{ gap: 'var(--space-3)' }}>
-                {[
-                  { label: 'Format', score: 92, color: 'green' },
-                  { label: 'Keywords', score: 78, color: '' },
-                  { label: 'Experience', score: 88, color: 'teal' },
-                ].map(m => (
-                  <div key={m.label} className="flex flex-col gap-2">
-                    <div className="flex justify-between" style={{ fontSize: '0.75rem' }}>
-                      <span className="text-muted">{m.label}</span>
-                      <span style={{ color: 'var(--text-primary)', fontWeight: 600 }}>{m.score}%</span>
-                    </div>
-                    <div className="progress-bar">
-                      <div className={`progress-fill ${m.color}`} style={{ width: `${m.score}%` }} />
-                    </div>
-                  </div>
-                ))}
-              </div>
-            </div>
-          )}
+    <ErrorBoundary>
+      <div className="animate-fade-in-up" style={{ padding: '24px', maxWidth: '1000px', margin: '0 auto' }}>
+        <div className="page-header" style={{ marginBottom: 24 }}>
+          <h1 style={{ fontFamily: 'var(--font-heading)', fontSize: '1.6rem', fontWeight: 700, margin: 0 }}>
+            Resume Upload
+          </h1>
+          <p style={{ color: 'var(--text-muted)', fontSize: '0.88rem', marginTop: 4 }}>
+            Upload your resume document to reference during AI interview question generation.
+          </p>
         </div>
 
-        {/* Skills Panel */}
-        <div>
-          {/* Extracted Skills */}
-          <div className="card mb-6">
-            <div className="section-title" style={{ marginBottom: 'var(--space-4)' }}>
-              <Sparkles size={16} color="var(--accent-primary)" />
-              Extracted Skills
-              {isDone && <span className="badge badge-success" style={{ marginLeft: 'auto' }}>AI Analyzed</span>}
-            </div>
-            <div style={{ display: 'flex', flexWrap: 'wrap', gap: 'var(--space-2)', minHeight: 60 }}>
-              {isDone ? (
-                extractedSkills.map((skill, i) => (
-                  <div key={skill.name} className="skill-tag animate-fade-in" style={{ animationDelay: `${i * 0.06}s`, opacity: 0 }}>
-                    {skill.name}
-                    <span style={{ fontSize: '0.7rem', opacity: 0.7 }}>{skill.score}%</span>
+        <div className="grid-2" style={{ gap: '24px', alignItems: 'start', display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(320px, 1fr))' }}>
+          {/* Upload Zone */}
+          <div>
+            {step === -1 ? (
+              <div
+                className={`drop-zone ${dragging ? 'dragging' : ''}`}
+                onDragOver={e => { e.preventDefault(); setDragging(true); }}
+                onDragLeave={() => setDragging(false)}
+                onDrop={handleDrop}
+                onClick={() => document.getElementById('resume-file-input').click()}
+                id="resume-drop-zone"
+                style={{
+                  border: '2px dashed var(--border-medium)', borderRadius: 'var(--radius-lg, 12px)',
+                  padding: '40px 20px', textAlign: 'center', background: dragging ? 'hsla(252,100%,68%,0.08)' : 'var(--bg-card)',
+                  cursor: 'pointer', transition: 'all 0.2s ease'
+                }}
+              >
+                <input
+                  type="file"
+                  id="resume-file-input"
+                  accept=".pdf,.doc,.docx,.txt"
+                  style={{ display: 'none' }}
+                  onChange={handleFileInput}
+                />
+                <div style={{ fontSize: '2.5rem', marginBottom: 12 }}>📄</div>
+                <h3 style={{ fontSize: '1.1rem', fontWeight: 600, marginBottom: 6, color: 'var(--text-primary)' }}>
+                  Drop your resume here or click to browse
+                </h3>
+                <p style={{ fontSize: '0.82rem', color: 'var(--text-muted)', marginBottom: 20 }}>
+                  Supports PDF, DOC, DOCX, TXT · Max 10MB
+                </p>
+                <button
+                  type="button"
+                  style={{
+                    padding: '10px 20px', borderRadius: 'var(--radius-md, 8px)',
+                    background: 'var(--accent-primary, #6366f1)', color: '#fff', border: 'none',
+                    fontWeight: 600, fontSize: '0.88rem', cursor: 'pointer',
+                    display: 'inline-flex', alignItems: 'center', gap: 8, pointerEvents: 'none'
+                  }}
+                >
+                  <Upload size={16} /> Choose File
+                </button>
+              </div>
+            ) : (
+              <div className="card" style={{ padding: '24px', borderRadius: 'var(--radius-lg, 12px)', background: 'var(--bg-card)', border: '1px solid var(--border-subtle)' }}>
+                {/* File Info */}
+                <div style={{ display: 'flex', alignItems: 'center', gap: 14, marginBottom: 20 }}>
+                  <div style={{
+                    width: 48, height: 48, background: 'hsla(252,100%,68%,0.1)',
+                    borderRadius: 'var(--radius-md)', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0
+                  }}>
+                    <FileText size={24} color="var(--accent-primary)" />
                   </div>
-                ))
+                  <div style={{ flex: 1, overflow: 'hidden' }}>
+                    <p style={{ fontWeight: 600, color: 'var(--text-primary)', fontSize: '0.92rem', margin: 0, textOverflow: 'ellipsis', overflow: 'hidden', whiteSpace: 'nowrap' }}>
+                      {file?.name || 'resume.pdf'}
+                    </p>
+                    <p style={{ fontSize: '0.78rem', color: 'var(--text-muted)', margin: 0, marginTop: 2 }}>
+                      {file?.size ? (file.size / 1024).toFixed(1) + ' KB' : '—'} · {file?.type || 'Document'}
+                    </p>
+                  </div>
+                  {isDone ? (
+                    <CheckCircle size={22} color="var(--accent-green, #10b981)" />
+                  ) : (
+                    <div style={{ width: 20, height: 20, border: '2px solid var(--accent-primary)', borderTopColor: 'transparent', borderRadius: '50%', animation: 'spin 0.8s linear infinite' }} />
+                  )}
+                </div>
+
+                {/* Progress Steps */}
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+                  {steps.map((s, i) => (
+                    <div key={s} style={{
+                      display: 'flex', alignItems: 'center', gap: 12,
+                      opacity: i > step ? 0.35 : 1, transition: 'opacity 0.3s ease'
+                    }}>
+                      <div style={{
+                        width: 22, height: 22, borderRadius: '50%', flexShrink: 0,
+                        background: i < step ? 'var(--accent-green, #10b981)' : i === step ? 'var(--accent-primary, #6366f1)' : 'var(--border-medium)',
+                        display: 'flex', alignItems: 'center', justifyContent: 'center',
+                        fontSize: '0.7rem', fontWeight: 700, color: 'white'
+                      }}>
+                        {i < step ? '✓' : i + 1}
+                      </div>
+                      <span style={{ fontSize: '0.85rem', color: i <= step ? 'var(--text-primary)' : 'var(--text-muted)' }}>
+                        {stepLabels[i]}
+                      </span>
+                    </div>
+                  ))}
+                </div>
+
+                {isDone && (
+                  <button
+                    onClick={reset}
+                    style={{
+                      marginTop: 20, padding: '8px 14px', borderRadius: 'var(--radius-md, 6px)',
+                      background: 'var(--bg-surface)', border: '1px solid var(--border-subtle)',
+                      color: 'var(--text-secondary)', fontSize: '0.82rem', fontWeight: 500,
+                      cursor: 'pointer', display: 'inline-flex', alignItems: 'center', gap: 6
+                    }}
+                  >
+                    <RefreshCw size={14} /> Upload different file
+                  </button>
+                )}
+              </div>
+            )}
+          </div>
+
+          {/* Document Status / Summary */}
+          <div>
+            <div className="card" style={{ padding: '24px', borderRadius: 'var(--radius-lg, 12px)', background: 'var(--bg-card)', border: '1px solid var(--border-subtle)' }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 14 }}>
+                <Sparkles size={18} color="var(--accent-primary, #6366f1)" />
+                <h3 style={{ fontFamily: 'var(--font-heading)', fontSize: '1.05rem', fontWeight: 700, margin: 0 }}>
+                  Resume Document Status
+                </h3>
+              </div>
+
+              {isDone ? (
+                <div>
+                  <div style={{
+                    padding: '16px', borderRadius: 'var(--radius-md)', background: 'hsla(142,70%,55%,0.08)',
+                    border: '1px solid var(--accent-green, #10b981)', marginBottom: 16
+                  }}>
+                    <p style={{ fontSize: '0.9rem', fontWeight: 700, color: 'var(--accent-green, #10b981)', margin: 0, display: 'flex', alignItems: 'center', gap: 6 }}>
+                      <CheckCircle size={16} /> File Loaded Successfully
+                    </p>
+                    <p style={{ fontSize: '0.8rem', color: 'var(--text-secondary)', marginTop: 6, margin: 0 }}>
+                      The uploaded file <strong>{file?.name}</strong> is stored in session context and ready to reference during question generation.
+                    </p>
+                  </div>
+                  <div style={{ fontSize: '0.82rem', color: 'var(--text-muted)', lineHeight: 1.6 }}>
+                    <strong style={{ color: 'var(--text-secondary)' }}>Next step:</strong> Head to the <strong>Mock Interview</strong> or <strong>Interview Generator</strong> section to launch an interview session tailored to your candidate role.
+                  </div>
+                </div>
               ) : (
-                <p className="text-sm text-muted" style={{ fontStyle: 'italic' }}>Upload a resume to extract skills...</p>
+                <div style={{
+                  padding: '30px 20px', textAlign: 'center', color: 'var(--text-muted)',
+                  background: 'var(--bg-surface)', borderRadius: 'var(--radius-md)', border: '1px dashed var(--border-subtle)'
+                }}>
+                  <FileText size={32} style={{ opacity: 0.3, marginBottom: 8 }} />
+                  <p style={{ fontSize: '0.88rem', fontWeight: 600, color: 'var(--text-secondary)', margin: 0 }}>
+                    No Resume Uploaded
+                  </p>
+                  <p style={{ fontSize: '0.78rem', marginTop: 4, margin: 0 }}>
+                    Select or drop a resume file to load your candidate profile background.
+                  </p>
+                </div>
               )}
             </div>
           </div>
-
-          {/* Skill Radar Chart */}
-          {isDone && (
-            <div className="card animate-fade-in">
-              <h4 className="section-title">
-                <BarIcon /> Skill Competency Radar
-              </h4>
-              <ResponsiveContainer width="100%" height={240}>
-                <RadarChart data={radarData}>
-                  <PolarGrid stroke="var(--border-subtle)" />
-                  <PolarAngleAxis dataKey="subject" tick={{ fill: 'var(--text-muted)', fontSize: 11 }} />
-                  <Radar name="Skills" dataKey="A" stroke="hsl(252,100%,68%)" fill="hsl(252,100%,68%)" fillOpacity={0.15} strokeWidth={2} />
-                </RadarChart>
-              </ResponsiveContainer>
-            </div>
-          )}
-
-          {/* Skill breakdown */}
-          {isDone && (
-            <div className="card mt-6 animate-fade-in">
-              <h4 className="section-title">Skill Breakdown</h4>
-              <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-3)' }}>
-                {extractedSkills.map((skill, i) => (
-                  <div key={skill.name} className="flex flex-col gap-1">
-                    <div className="flex justify-between">
-                      <span style={{ fontSize: '0.82rem', fontWeight: 500, color: 'var(--text-primary)' }}>{skill.name}</span>
-                      <span style={{ fontSize: '0.82rem', fontWeight: 600, color: skill.score >= 80 ? 'var(--accent-green)' : 'var(--accent-primary)' }}>{skill.score}%</span>
-                    </div>
-                    <div className="progress-bar">
-                      <div className={`progress-fill ${skill.score >= 80 ? 'green' : ''}`} style={{ width: `${skill.score}%`, transition: `width ${0.5 + i * 0.1}s ease` }} />
-                    </div>
-                  </div>
-                ))}
-              </div>
-            </div>
-          )}
         </div>
       </div>
-    </div>
-  );
-}
-
-function BarIcon() {
-  return (
-    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="var(--accent-primary)" strokeWidth="2" strokeLinecap="round">
-      <line x1="18" y1="20" x2="18" y2="10" /><line x1="12" y1="20" x2="12" y2="4" /><line x1="6" y1="20" x2="6" y2="14" />
-    </svg>
+    </ErrorBoundary>
   );
 }

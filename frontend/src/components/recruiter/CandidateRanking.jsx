@@ -1,11 +1,10 @@
 // ============================================================
 //  CandidateRanking.jsx — Recruiter Candidate Ranking View
 // ============================================================
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { Trophy, Search, RefreshCw, AlertTriangle, Filter, RotateCcw } from 'lucide-react';
 import ErrorBoundary from '../common/ErrorBoundary';
-
-const API_BASE = import.meta.env.VITE_API_URL || 'http://localhost:5000';
+import { apiFetch } from '../../api/apiClient';
 
 const INTERVIEW_TYPE_OPTIONS = [
   { value: 'all', label: 'All Interview Types' },
@@ -15,18 +14,14 @@ const INTERVIEW_TYPE_OPTIONS = [
   { value: 'Aptitude', label: 'Aptitude Interview' },
 ];
 
-export default function CandidateRanking({ onSelectCandidate }) {
+export default function CandidateRanking({ onSelectCandidate, onTabChange }) {
   const [candidates, setCandidates]       = useState([]);
   const [loading, setLoading]             = useState(true);
   const [error, setError]                 = useState(null);
   const [interviewType, setInterviewType] = useState('all');
   const [search, setSearch]               = useState('');
 
-  useEffect(() => {
-    fetchRankings();
-  }, [interviewType, search]);
-
-  const fetchRankings = async () => {
+  const fetchRankings = useCallback(async () => {
     setLoading(true);
     setError(null);
     try {
@@ -52,11 +47,11 @@ export default function CandidateRanking({ onSelectCandidate }) {
     } finally {
       setLoading(false);
     }
-  };
+  }, [interviewType, search]);
 
   useEffect(() => {
     fetchRankings();
-  }, [interviewType]);
+  }, [fetchRankings]);
 
   const handleSearchSubmit = (e) => {
     e.preventDefault();

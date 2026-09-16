@@ -20,6 +20,7 @@ import {
 
 
 import ErrorBoundary from '../common/ErrorBoundary';
+import { apiFetch, safeJsonParse } from '../../api/apiClient';
 
 // ── Utility helpers ───────────────────────────────────────────
 const formatSecs = (secs) => {
@@ -195,9 +196,9 @@ export default function InterviewSummary({ session: sessionProp, onBack }) {
     const fetchResults = async () => {
       setLoadingResult(true);
       try {
-        const res = await apiFetch(`/api/interviews/sessions/${id}/results`);
+        const res = await apiFetch(`/api/interviews/sessions/${id}`);
         if (res.ok) {
-          const data = await res.json();
+          const data = await safeJsonParse(res);
           if (data && data.result) {
             setFetchedResult(data.result);
           }
@@ -210,7 +211,7 @@ export default function InterviewSummary({ session: sessionProp, onBack }) {
     };
 
     fetchResults();
-  }, [id, API_BASE]);
+  }, [id]);
 
   // ── Derive duration ───────────────────────────────────────
   let totalDurationSecs = duration || 0;

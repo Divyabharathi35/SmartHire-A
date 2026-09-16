@@ -1,9 +1,9 @@
 // ============================================================
 //  InterviewHistory.jsx — Candidate Interview History
 // ============================================================
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { Clock, Download, ChevronDown, ChevronUp, Tag, Star, Play, Award, Filter } from 'lucide-react';
-import { apiFetch, getAuthToken, API_BASE } from '../../api/apiClient';
+import { apiFetch, getAuthToken, safeJsonParse } from '../../api/apiClient';
 import ErrorBoundary from '../common/ErrorBoundary';
 
 function ScoreRing({ score, size = 60 }) {
@@ -48,20 +48,17 @@ export default function InterviewHistory() {
   const [filterDomain, setFilterDomain]   = useState('All');
   const [fetchError, setFetchError]     = useState(null);
 
-  useEffect(() => {
-    fetchHistory();
-  }, []);
-
-  const fetchHistory = async () => {
+  const fetchHistory = useCallback(async () => {
     setLoading(true);
     setFetchError(null);
     try {
       const res = await apiFetch('/api/history', { method: 'GET' });
       if (res.ok) {
-        const data = await res.json();
-        setSessions(data || []);
+        const data = await safeJsonParse(res);
+        const historyList = Array.isArray(data) ? data : (data?.sessions || data?.history || []);
+        setSessions(historyList);
       } else {
-        const errTxt = await res.text();
+        const errTxt = await res.text().catch(() => '');
         setFetchError(`HTTP ${res.status}: ${errTxt || 'Failed to load interview history'}`);
         setSessions([]);
       }
@@ -72,7 +69,11 @@ export default function InterviewHistory() {
     } finally {
       setLoading(false);
     }
-  };
+  }, []);
+
+  useEffect(() => {
+    fetchHistory();
+  }, [fetchHistory]);
 
   const handleDownload = async (id) => {
     setDownloading(id);
@@ -121,10 +122,13 @@ export default function InterviewHistory() {
 
   const filteredSessions = filterDomain === 'All'
     ? sessions
-    : sessions.filter(s => s.domain === filterDomain);
+    : sessions.filter(s => (s.domain || '').trim().toLowerCase() === filterDomain.trim().toLowerCase());
 
   const validScores = sessions
-    .map(s => parseFloat(s.score))
+    .map(s => {
+      const val = s.score ?? s.result?.overall_score;
+      return val !== null && val !== undefined ? parseFloat(val) : null;
+    })
     .filter(sc => sc !== null && sc !== undefined && !isNaN(sc));
 
   const avgScore = validScores.length > 0
@@ -135,7 +139,7 @@ export default function InterviewHistory() {
     ? `${Math.round(Math.max(...validScores))}%`
     : '—';
 
-  const domainsList = ['All', ...new Set(sessions.map(s => s.domain).filter(Boolean))];
+  const domainsList = ['All', ...new Set(sessions.map(s => (s.domain || '').trim()).filter(Boolean))];
 
   return (
     <ErrorBoundary>
@@ -208,12 +212,12 @@ export default function InterviewHistory() {
         ) : filteredSessions.length === 0 ? (
           <div style={{ textAlign: 'center', padding: '40px 20px', background: 'var(--bg-card)', borderRadius: 'var(--radius-md)', border: '1px dashed var(--border-medium)', color: 'var(--text-muted)' }}>
             <p style={{ fontSize: '1rem', fontWeight: 600, color: 'var(--text-primary)' }}>No completed interview report available.</p>
-            <p style={{ fontSize: '0.82rem', marginTop: 4 }}>Generate and complete a mock interview session to view performance metrics here.</p>
           </div>
         ) : (
           <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
             {filteredSessions.map((item, i) => {
-              const itemScore = item.score !== null && item.score !== undefined ? parseFloat(item.score) : null;
+              const rawScoreVal = item.score ?? item.result?.overall_score;
+              const itemScore = rawScoreVal !== null && rawScoreVal !== undefined ? parseFloat(rawScoreVal) : null;
               const itemStatus = (item.status || '').toLowerCase();
               let badgeLabel = 'Pending Interview';
               let badgeBg = 'hsla(252,100%,68%,0.12)';

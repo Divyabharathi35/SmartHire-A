@@ -4,15 +4,13 @@
 //  1. Skill Analysis (Vertical Bar Graph)
 //  2. Predicted Weak Areas (Horizontal Bar Graph)
 // ============================================================
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { apiFetch } from '../../api/apiClient';
 import {
   BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Cell, LabelList
 } from 'recharts';
 import { AlertTriangle, CheckCircle, RefreshCw, BarChart2 } from 'lucide-react';
 import ErrorBoundary from '../common/ErrorBoundary';
-
-const API_BASE = import.meta.env.VITE_API_URL || 'http://localhost:5000';
 
 const CustomTooltip = ({ active, payload, label }) => {
   if (active && payload && payload.length) {
@@ -23,11 +21,15 @@ const CustomTooltip = ({ active, payload, label }) => {
         boxShadow: '0 4px 12px rgba(0,0,0,0.3)'
       }}>
         <p style={{ color: 'var(--text-secondary)', fontWeight: 600, marginBottom: 4 }}>{label}</p>
-        {payload.map((p, i) => (
-          <p key={i} style={{ color: p.color || p.fill, fontWeight: 700, margin: 0 }}>
-            {p.name || 'Score'}: {p.value !== null && p.value !== undefined ? `${p.value}%` : 'N/A'}
-          </p>
-        ))}
+        {payload.map((p, i) => {
+          const rawVal = p?.value;
+          const numVal = rawVal !== null && rawVal !== undefined && !isNaN(Number(rawVal)) ? Number(rawVal) : null;
+          return (
+            <p key={i} style={{ color: p?.color || p?.fill || 'var(--text-primary)', fontWeight: 700, margin: 0 }}>
+              {p?.name || 'Score'}: {numVal !== null ? `${numVal.toFixed(1)}%` : 'N/A'}
+            </p>
+          );
+        })}
       </div>
     );
   }
@@ -39,11 +41,7 @@ export default function Analytics() {
   const [loading, setLoading] = useState(true);
   const [error, setError]     = useState(null);
 
-  useEffect(() => {
-    fetchAnalytics();
-  }, []);
-
-  const fetchAnalytics = async () => {
+  const fetchAnalytics = useCallback(async () => {
     setLoading(true);
     setError(null);
     try {
@@ -52,22 +50,22 @@ export default function Analytics() {
       });
       if (res.ok) {
         const json = await res.json();
-        setData(json);
+        setData(json || null);
       } else {
-        const errTxt = await res.text();
+        const errTxt = await res.text().catch(() => '');
         setError(`HTTP ${res.status}: ${errTxt || 'Failed to load analytics'}`);
       }
     } catch (err) {
       console.error('[Analytics] Fetch error:', err);
-      setError(err.message || 'Network error loading analytics data');
+      setError(err?.message || 'Network error loading analytics data');
     } finally {
       setLoading(false);
     }
-  };
+  }, []);
 
   useEffect(() => {
     fetchAnalytics();
-  }, []);
+  }, [fetchAnalytics]);
 
   if (loading) {
     return (
@@ -100,9 +98,37 @@ export default function Analytics() {
     );
   }
 
-  const completedCount = data?.completed_interviews_count || 0;
-  const skillAnalytics = data?.skill_analytics || data?.skill_analysis || [];
-  const weakAreas = data?.predicted_weak_areas || [];
+  const completedCount = typeof data?.completed_interviews_count === 'number'
+    ? data.completed_interviews_count
+    : (Array.isArray(data?.completed_interviews) ? data.completed_interviews.length : 0);
+
+  const rawSkillAnalytics = Array.isArray(data?.skill_analytics)
+    ? data.skill_analytics
+    : (Array.isArray(data?.skill_analysis) ? data.skill_analysis : []);
+
+  const skillAnalytics = rawSkillAnalytics
+    .map(item => {
+      const name = String(item?.skill || item?.category || item?.name || 'Skill');
+      const scoreVal = typeof item?.score === 'number'
+        ? item.score
+        : (typeof item?.average_score === 'number' ? item.average_score : (parseFloat(item?.score) || 0));
+      return { skill: name, score: isNaN(scoreVal) ? 0 : scoreVal };
+    })
+    .filter(item => typeof item.score === 'number' && !isNaN(item.score));
+
+  const rawWeakAreas = Array.isArray(data?.predicted_weak_areas)
+    ? data.predicted_weak_areas
+    : (Array.isArray(data?.weak_areas) ? data.weak_areas : []);
+
+  const weakAreas = rawWeakAreas
+    .map(item => {
+      const name = String(item?.skill || item?.category || item?.name || 'Skill');
+      const scoreVal = typeof item?.average_score === 'number'
+        ? item.average_score
+        : (typeof item?.score === 'number' ? item.score : (parseFloat(item?.average_score || item?.score) || 0));
+      return { skill: name, average_score: isNaN(scoreVal) ? 0 : scoreVal };
+    })
+    .filter(item => typeof item.average_score === 'number' && !isNaN(item.average_score));
 
   return (
     <ErrorBoundary>
@@ -173,7 +199,7 @@ export default function Analytics() {
                     fill="var(--text-primary)"
                     fontSize={11}
                     fontWeight={700}
-                    formatter={(v) => `${Math.round(v)}%`}
+                    formatter={(v) => `${Math.round(Number(v) || 0)}%`}
                   />
                   {skillAnalytics.map((entry, i) => (
                     <Cell
@@ -276,7 +302,7 @@ export default function Analytics() {
                     fill="var(--accent-amber, #f59e0b)"
                     fontSize={11}
                     fontWeight={700}
-                    formatter={(v) => `${Math.round(v)}%`}
+                    formatter={(v) => `${Math.round(Number(v) || 0)}%`}
                   />
                 </Bar>
               </BarChart>

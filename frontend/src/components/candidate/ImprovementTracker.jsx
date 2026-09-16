@@ -5,14 +5,15 @@
 //  2. Session Milestones (Cards)
 //  3. Improvement Insights (Progress, Strongest Area, Focus Area)
 // ============================================================
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import {
   LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, LabelList
 } from 'recharts';
 import { TrendingUp, Award, Target, CheckCircle2, RefreshCw, AlertTriangle, ArrowUpRight, ArrowDownRight } from 'lucide-react';
 import ErrorBoundary from '../common/ErrorBoundary';
+import { apiFetch } from '../../api/apiClient';
 
-const API_BASE = import.meta.env.VITE_API_URL || 'http://localhost:5000';
+
 
 const CustomTooltip = ({ active, payload, label }) => {
   if (active && payload && payload.length) {
@@ -39,7 +40,7 @@ export default function ImprovementTracker() {
   const [loading, setLoading] = useState(true);
   const [error, setError]     = useState(null);
 
-  const fetchTrackerData = async () => {
+  const fetchTrackerData = useCallback(async () => {
     setLoading(true);
     setError(null);
     try {
@@ -60,11 +61,11 @@ export default function ImprovementTracker() {
     } finally {
       setLoading(false);
     }
-  };
+  }, []);
 
   useEffect(() => {
     fetchTrackerData();
-  }, []);
+  }, [fetchTrackerData]);
 
   if (loading) {
     return (

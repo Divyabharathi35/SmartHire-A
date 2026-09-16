@@ -1,9 +1,29 @@
 import { useState } from 'react';
-import { Plus, Trash2, GripVertical, Clock, Save, ChevronDown } from 'lucide-react';
-import { templateQuestions } from '../../data/mockData';
+import { Plus, Trash2, GripVertical, Clock, Save, ChevronDown, Check } from 'lucide-react';
+import ErrorBoundary from '../common/ErrorBoundary';
 
-const ROUND_TYPES = ['Technical', 'HR', 'Behavioral'];
+const ROUND_TYPES = ['Technical', 'HR', 'Behavioral', 'Aptitude'];
 const DIFFICULTIES = ['Easy', 'Medium', 'Hard'];
+
+const DEFAULT_STARTER_QUESTIONS = {
+  Technical: [
+    { id: 1, text: 'Explain the difference between client-side and server-side rendering.', difficulty: 'Easy' },
+    { id: 2, text: 'How does state management differ between local state and global context?', difficulty: 'Medium' },
+    { id: 3, text: 'Describe a time you diagnosed and optimized a performance bottleneck in code.', difficulty: 'Hard' }
+  ],
+  HR: [
+    { id: 101, text: 'Walk us through your professional background and key accomplishments.', difficulty: 'Easy' },
+    { id: 102, text: 'What environment allows you to produce your best work?', difficulty: 'Easy' },
+    { id: 103, text: 'Where do you see your career path progressing over the next 3 years?', difficulty: 'Medium' }
+  ],
+  Behavioral: [
+    { id: 201, text: 'Describe a situation where project priorities changed unexpectedly.', difficulty: 'Medium' },
+    { id: 202, text: 'Tell us about a technical disagreement with a colleague and how you resolved it.', difficulty: 'Hard' }
+  ],
+  Aptitude: [
+    { id: 301, text: 'How do you prioritize competing deadlines across multiple high-priority tasks?', difficulty: 'Medium' }
+  ]
+};
 
 function DifficultyBadge({ diff }) {
   const cls = diff === 'Easy' ? 'difficulty-easy' : diff === 'Medium' ? 'difficulty-medium' : 'difficulty-hard';
@@ -12,16 +32,16 @@ function DifficultyBadge({ diff }) {
 
 export default function TemplateBuilder() {
   const [activeRound, setActiveRound] = useState('Technical');
-  const [questions, setQuestions] = useState(templateQuestions['Technical']);
+  const [questions, setQuestions] = useState(DEFAULT_STARTER_QUESTIONS['Technical']);
   const [newQ, setNewQ] = useState('');
   const [newDiff, setNewDiff] = useState('Medium');
   const [duration, setDuration] = useState(45);
-  const [templateName, setTemplateName] = useState('React Developer — Technical Round');
+  const [templateName, setTemplateName] = useState('Custom Candidate Interview Template');
   const [saved, setSaved] = useState(false);
 
   const switchRound = (round) => {
     setActiveRound(round);
-    setQuestions(templateQuestions[round] || []);
+    setQuestions(DEFAULT_STARTER_QUESTIONS[round] || []);
   };
 
   const addQuestion = () => {
@@ -38,160 +58,163 @@ export default function TemplateBuilder() {
   };
 
   return (
-    <div className="animate-fade-in-up">
-      <div className="page-header">
-        <h1>Interview Template Builder</h1>
-        <p>Design custom interview rounds with specific questions, difficulty levels, and time constraints</p>
-      </div>
-
-      <div className="grid-2" style={{ gap: 'var(--space-8)', alignItems: 'start' }}>
-        {/* Builder */}
-        <div>
-          {/* Template Name */}
-          <div className="card" style={{ marginBottom: 'var(--space-6)' }}>
-            <h3 style={{ marginBottom: 'var(--space-5)' }}>Template Settings</h3>
-            <div className="flex flex-col gap-4">
-              <div className="form-group">
-                <label className="form-label">Template Name</label>
-                <input
-                  id="template-name-input"
-                  className="form-control"
-                  value={templateName}
-                  onChange={e => setTemplateName(e.target.value)}
-                />
-              </div>
-              <div className="form-group">
-                <label className="form-label">Duration (minutes): {duration} min</label>
-                <input
-                  type="range"
-                  className="range-slider"
-                  min={15} max={120} step={5}
-                  value={duration}
-                  onChange={e => setDuration(Number(e.target.value))}
-                  id="template-duration-slider"
-                />
-                <div className="slider-labels">
-                  <span>15 min</span>
-                  <span>120 min</span>
-                </div>
-              </div>
-            </div>
-          </div>
-
-          {/* Round Tabs */}
-          <div className="tabs" style={{ marginBottom: 'var(--space-5)' }}>
-            {ROUND_TYPES.map(r => (
-              <button key={r} className={`tab-item ${activeRound === r ? 'active' : ''}`} onClick={() => switchRound(r)}>
-                {r}
-                <span style={{ marginLeft: 4, fontSize: '0.7rem', background: activeRound === r ? 'var(--accent-primary)' : 'var(--border-medium)', color: 'white', padding: '1px 6px', borderRadius: 99 }}>
-                  {(templateQuestions[r] || []).length}
-                </span>
-              </button>
-            ))}
-          </div>
-
-          {/* Question List */}
-          <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-3)', marginBottom: 'var(--space-4)' }}>
-            {questions.map((q, i) => (
-              <div key={q.id} className="template-question">
-                <GripVertical size={16} className="drag-handle" />
-                <span style={{ width: 24, height: 24, borderRadius: '50%', background: 'var(--bg-surface)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '0.72rem', fontWeight: 700, color: 'var(--text-muted)', flexShrink: 0 }}>
-                  {i + 1}
-                </span>
-                <span style={{ flex: 1, fontSize: '0.85rem', color: 'var(--text-primary)', lineHeight: 1.5 }}>{q.text}</span>
-                <DifficultyBadge diff={q.difficulty} />
-                <button className="btn btn-ghost btn-sm" style={{ padding: '4px', color: 'var(--text-muted)' }} onClick={() => removeQuestion(q.id)}>
-                  <Trash2 size={14} />
-                </button>
-              </div>
-            ))}
-          </div>
-
-          {/* Add Question */}
-          <div className="card" style={{ marginBottom: 'var(--space-6)', border: '1px dashed var(--border-medium)' }}>
-            <h4 style={{ fontSize: '0.85rem', marginBottom: 'var(--space-4)', color: 'var(--text-secondary)' }}>
-              <Plus size={14} style={{ display: 'inline', marginRight: 6 }} />
-              Add Custom Question
-            </h4>
-            <div className="flex flex-col gap-3">
-              <textarea
-                className="form-control"
-                placeholder="Type your interview question here..."
-                value={newQ}
-                onChange={e => setNewQ(e.target.value)}
-                id="new-question-textarea"
-                style={{ minHeight: 70 }}
-              />
-              <div className="flex gap-3 items-center">
-                <select className="form-control" value={newDiff} onChange={e => setNewDiff(e.target.value)} id="question-difficulty-select" style={{ maxWidth: 140 }}>
-                  {DIFFICULTIES.map(d => <option key={d}>{d}</option>)}
-                </select>
-                <button className="btn btn-primary" style={{ flex: 1 }} onClick={addQuestion} id="add-question-btn">
-                  <Plus size={15} />
-                  Add Question
-                </button>
-              </div>
-            </div>
-          </div>
-
-          <button className="btn btn-primary w-full" onClick={saveTemplate} id="save-template-btn">
-            {saved ? '✓ Template Saved!' : <><Save size={16} /> Save Template</>}
-          </button>
+    <ErrorBoundary>
+      <div className="animate-fade-in-up" style={{ padding: '24px', maxWidth: '1000px', margin: '0 auto' }}>
+        <div className="page-header" style={{ marginBottom: 24 }}>
+          <h1 style={{ fontFamily: 'var(--font-heading)', fontSize: '1.6rem', fontWeight: 700, margin: 0 }}>
+            Interview Template Builder
+          </h1>
+          <p style={{ color: 'var(--text-muted)', fontSize: '0.88rem', marginTop: 4 }}>
+            Design custom interview rounds with specific questions, difficulty levels, and time constraints
+          </p>
         </div>
 
-        {/* Preview Panel */}
-        <div>
-          <div className="card" style={{ background: 'linear-gradient(135deg, hsla(252,100%,68%,0.05), hsla(280,90%,65%,0.05))', border: '1px solid var(--border-accent)' }}>
-            <h3 style={{ marginBottom: 'var(--space-6)' }}>Template Preview</h3>
-
-            <div style={{ marginBottom: 'var(--space-5)' }}>
-              <p style={{ fontSize: '0.72rem', fontWeight: 600, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: 6 }}>Template Name</p>
-              <p style={{ fontWeight: 600, color: 'var(--text-primary)' }}>{templateName}</p>
-            </div>
-
-            <div className="grid-2" style={{ gap: 'var(--space-4)', marginBottom: 'var(--space-5)' }}>
-              <div style={{ background: 'var(--bg-card)', padding: 'var(--space-4)', borderRadius: 'var(--radius-md)', textAlign: 'center' }}>
-                <div style={{ fontSize: '1.8rem', fontFamily: 'var(--font-heading)', fontWeight: 700, color: 'var(--accent-primary)' }}>{questions.length}</div>
-                <p style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>Questions</p>
-              </div>
-              <div style={{ background: 'var(--bg-card)', padding: 'var(--space-4)', borderRadius: 'var(--radius-md)', textAlign: 'center' }}>
-                <div style={{ fontSize: '1.8rem', fontFamily: 'var(--font-heading)', fontWeight: 700, color: 'var(--accent-teal)', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 4 }}>
-                  <Clock size={22} />{duration}
+        <div className="grid-2" style={{ gap: '24px', alignItems: 'start', display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(320px, 1fr))' }}>
+          {/* Builder */}
+          <div>
+            {/* Template Name */}
+            <div className="card" style={{ padding: '24px', borderRadius: 'var(--radius-lg, 12px)', background: 'var(--bg-card)', border: '1px solid var(--border-subtle)', marginBottom: 20 }}>
+              <h3 style={{ fontSize: '1.05rem', fontWeight: 700, marginBottom: 16 }}>Template Settings</h3>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
+                <div>
+                  <label className="form-label" style={{ display: 'block', fontSize: '0.82rem', fontWeight: 600, color: 'var(--text-secondary)', marginBottom: 6 }}>
+                    Template Name
+                  </label>
+                  <input
+                    id="template-name-input"
+                    className="form-control"
+                    value={templateName}
+                    onChange={e => setTemplateName(e.target.value)}
+                    placeholder="e.g. Senior Software Engineer Round"
+                    style={{ width: '100%', padding: '10px 14px', borderRadius: 'var(--radius-md)', background: 'var(--bg-input)', border: '1px solid var(--border-subtle)', color: 'var(--text-primary)' }}
+                  />
                 </div>
-                <p style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>Minutes</p>
-              </div>
-            </div>
-
-            {/* Difficulty Breakdown */}
-            <div style={{ marginBottom: 'var(--space-5)' }}>
-              <p style={{ fontSize: '0.72rem', fontWeight: 600, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: 10 }}>Difficulty Mix</p>
-              <div className="flex gap-2">
-                {['Easy', 'Medium', 'Hard'].map(d => {
-                  const count = questions.filter(q => q.difficulty === d).length;
-                  const pct = questions.length ? Math.round(count / questions.length * 100) : 0;
-                  return count > 0 ? (
-                    <div key={d} style={{ flex: pct, minWidth: 40, background: d === 'Easy' ? 'hsla(142,70%,55%,0.15)' : d === 'Medium' ? 'hsla(38,95%,60%,0.15)' : 'hsla(350,90%,65%,0.15)', borderRadius: 'var(--radius-sm)', padding: '6px 10px', textAlign: 'center' }}>
-                      <p style={{ fontSize: '0.9rem', fontWeight: 700, color: d === 'Easy' ? 'var(--accent-green)' : d === 'Medium' ? 'var(--accent-amber)' : 'var(--accent-rose)' }}>{count}</p>
-                      <p style={{ fontSize: '0.65rem', color: 'var(--text-muted)' }}>{d}</p>
+                <div style={{ display: 'flex', gap: 16 }}>
+                  <div style={{ flex: 1 }}>
+                    <label className="form-label" style={{ display: 'block', fontSize: '0.82rem', fontWeight: 600, color: 'var(--text-secondary)', marginBottom: 6 }}>
+                      Target Duration (mins)
+                    </label>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                      <Clock size={16} color="var(--text-muted)" />
+                      <input
+                        id="template-duration-input"
+                        type="number"
+                        className="form-control"
+                        value={duration}
+                        onChange={e => setDuration(Number(e.target.value))}
+                        style={{ width: '100%', padding: '10px 14px', borderRadius: 'var(--radius-md)', background: 'var(--bg-input)', border: '1px solid var(--border-subtle)', color: 'var(--text-primary)' }}
+                      />
                     </div>
-                  ) : null;
-                })}
+                  </div>
+                </div>
               </div>
             </div>
 
-            {/* Round overview */}
-            <div>
-              <p style={{ fontSize: '0.72rem', fontWeight: 600, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: 10 }}>All Rounds</p>
-              {ROUND_TYPES.map(r => (
-                <div key={r} className="flex justify-between items-center" style={{ padding: 'var(--space-3) 0', borderBottom: '1px solid var(--border-subtle)', fontSize: '0.85rem' }}>
-                  <span style={{ color: activeRound === r ? 'var(--accent-primary)' : 'var(--text-secondary)', fontWeight: activeRound === r ? 600 : 400 }}>{r}</span>
-                  <span style={{ color: 'var(--text-muted)' }}>{(templateQuestions[r] || []).length} questions</span>
+            {/* Round Tabs */}
+            <div className="card" style={{ padding: '24px', borderRadius: 'var(--radius-lg, 12px)', background: 'var(--bg-card)', border: '1px solid var(--border-subtle)' }}>
+              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 16 }}>
+                <h3 style={{ fontSize: '1.05rem', fontWeight: 700, margin: 0 }}>Round Questions</h3>
+                <div style={{ display: 'flex', gap: 6 }}>
+                  {ROUND_TYPES.map(r => (
+                    <button
+                      key={r}
+                      onClick={() => switchRound(r)}
+                      style={{
+                        padding: '6px 12px', borderRadius: 'var(--radius-md)', fontSize: '0.8rem', fontWeight: 600,
+                        border: activeRound === r ? '1px solid var(--accent-primary)' : '1px solid var(--border-subtle)',
+                        background: activeRound === r ? 'hsla(252,100%,68%,0.15)' : 'var(--bg-surface)',
+                        color: activeRound === r ? 'var(--accent-primary)' : 'var(--text-muted)',
+                        cursor: 'pointer'
+                      }}
+                    >
+                      {r}
+                    </button>
+                  ))}
                 </div>
-              ))}
+              </div>
+
+              {/* Questions List */}
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 10, marginBottom: 20 }}>
+                {questions.map((q, i) => (
+                  <div
+                    key={q.id}
+                    style={{
+                      padding: '12px 14px', borderRadius: 'var(--radius-md)', background: 'var(--bg-surface)',
+                      border: '1px solid var(--border-subtle)', display: 'flex', alignItems: 'center', gap: 12
+                    }}
+                  >
+                    <GripVertical size={16} color="var(--text-muted)" style={{ cursor: 'grab' }} />
+                    <span style={{ fontSize: '0.8rem', fontWeight: 700, color: 'var(--text-muted)' }}>Q{i + 1}.</span>
+                    <span style={{ flex: 1, fontSize: '0.85rem', color: 'var(--text-primary)' }}>{q.text}</span>
+                    <DifficultyBadge diff={q.difficulty} />
+                    <button
+                      onClick={() => removeQuestion(q.id)}
+                      style={{ background: 'none', border: 'none', color: 'var(--text-muted)', cursor: 'pointer', padding: 4 }}
+                    >
+                      <Trash2 size={15} />
+                    </button>
+                  </div>
+                ))}
+              </div>
+
+              {/* Add Question Input */}
+              <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+                <input
+                  id="new-question-input"
+                  type="text"
+                  placeholder="Type new question text..."
+                  value={newQ}
+                  onChange={e => setNewQ(e.target.value)}
+                  onKeyDown={e => e.key === 'Enter' && addQuestion()}
+                  style={{ flex: 1, minWidth: 200, padding: '10px 14px', borderRadius: 'var(--radius-md)', background: 'var(--bg-input)', border: '1px solid var(--border-subtle)', color: 'var(--text-primary)', fontSize: '0.85rem' }}
+                />
+                <select
+                  id="new-question-difficulty"
+                  value={newDiff}
+                  onChange={e => setNewDiff(e.target.value)}
+                  style={{ padding: '10px 14px', borderRadius: 'var(--radius-md)', background: 'var(--bg-input)', border: '1px solid var(--border-subtle)', color: 'var(--text-primary)', fontSize: '0.85rem' }}
+                >
+                  {DIFFICULTIES.map(d => <option key={d} value={d}>{d}</option>)}
+                </select>
+                <button
+                  onClick={addQuestion}
+                  style={{
+                    padding: '10px 16px', borderRadius: 'var(--radius-md)', background: 'var(--accent-primary)',
+                    color: '#fff', border: 'none', fontWeight: 600, fontSize: '0.85rem', cursor: 'pointer',
+                    display: 'inline-flex', alignItems: 'center', gap: 6
+                  }}
+                >
+                  <Plus size={16} /> Add
+                </button>
+              </div>
+            </div>
+          </div>
+
+          {/* Action Card */}
+          <div>
+            <div className="card" style={{ padding: '24px', borderRadius: 'var(--radius-lg, 12px)', background: 'var(--bg-card)', border: '1px solid var(--border-subtle)' }}>
+              <h3 style={{ fontSize: '1.05rem', fontWeight: 700, marginBottom: 14 }}>Template Summary</h3>
+              <div style={{ fontSize: '0.85rem', color: 'var(--text-secondary)', display: 'flex', flexDirection: 'column', gap: 10, marginBottom: 20 }}>
+                <div><strong>Name:</strong> {templateName}</div>
+                <div><strong>Round:</strong> {activeRound}</div>
+                <div><strong>Total Questions:</strong> {questions.length}</div>
+                <div><strong>Target Duration:</strong> {duration} minutes</div>
+              </div>
+              <button
+                onClick={saveTemplate}
+                style={{
+                  width: '100%', padding: '12px', borderRadius: 'var(--radius-md)',
+                  background: saved ? 'var(--accent-green, #10b981)' : 'linear-gradient(135deg, var(--accent-primary), var(--accent-secondary))',
+                  color: '#fff', border: 'none', fontWeight: 700, fontSize: '0.9rem', cursor: 'pointer',
+                  display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8, transition: 'all 0.2s ease'
+                }}
+              >
+                {saved ? <><Check size={18} /> Template Saved!</> : <><Save size={18} /> Save Template</>}
+              </button>
             </div>
           </div>
         </div>
       </div>
-    </div>
+    </ErrorBoundary>
   );
 }

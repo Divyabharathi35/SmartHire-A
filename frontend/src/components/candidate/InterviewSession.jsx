@@ -11,8 +11,7 @@ import {
 import InterviewSummary from './InterviewSummary';
 import PreInterviewSecurityCheck from './PreInterviewSecurityCheck';
 import ProctoringEngine from './ProctoringEngine';
-
-const API_BASE = import.meta.env.VITE_API_URL || 'http://localhost:5000';
+import { apiFetch } from '../../api/apiClient';
 
 function getBestSupportedMimeType() {
   if (typeof MediaRecorder === 'undefined') return '';
@@ -150,14 +149,8 @@ export default function InterviewSession({ session: initialSession, onBackToGene
           const base64Data = frameCanvas.toDataURL('image/jpeg', 0.7);
           setEmotionModelStatus(prev => prev === 'Unavailable' ? 'Unavailable' : 'Processing');
 
-          const url = `${API_BASE}/api/interviews/sessions/${session.id}/emotion-frame`;
-
-          const res = await fetch(url, {
+          const res = await apiFetch(`/api/interviews/sessions/${session.id}/emotion-frame`, {
             method: 'POST',
-            headers: {
-              'Content-Type': 'application/json',
-            },
-            credentials: 'include',
             body: JSON.stringify({
               image_base64: base64Data,
               question_id: currentQuestion?.id || null,
@@ -188,7 +181,7 @@ export default function InterviewSession({ session: initialSession, onBackToGene
         }
       }, 1000);
     } else if (sessionStatus === 'CREATED' || sessionStatus === 'SETUP') {
-      fetch(`${API_BASE}/api/interviews/sessions/` + (session?.id || 'check') + '/emotion-analysis')
+      apiFetch('/api/interviews/sessions/' + (session?.id || 'check') + '/emotion-analysis')
         .then(r => r.json())
         .then(d => {
           if (d.status === 'ready' || d.status === 'completed') setEmotionModelStatus('Ready');
@@ -461,9 +454,8 @@ export default function InterviewSession({ session: initialSession, onBackToGene
       formData.append('question_number', questionNumber.toString());
       formData.append('duration', (durationVal || 0).toString());
 
-      const res = await fetch(`${API_BASE}/api/sessions/${sessionId}/answers/audio`, {
+      const res = await apiFetch(`/api/sessions/${sessionId}/answers/audio`, {
         method: 'POST',
-        credentials: 'include',
         body: formData,
       });
       if (res.ok) {
@@ -680,9 +672,8 @@ export default function InterviewSession({ session: initialSession, onBackToGene
     accumQuestionSecsRef.current = 0;
 
     try {
-      const res = await fetch(`${API_BASE}/api/interviews/sessions/${session.id}/start`, {
+      const res = await apiFetch(`/api/interviews/sessions/${session.id}/start`, {
         method: 'POST',
-        credentials: 'include',
       });
       if (res.ok) {
         const updated = await res.json();
@@ -736,10 +727,8 @@ export default function InterviewSession({ session: initialSession, onBackToGene
     }
 
     try {
-      const res = await fetch(`${API_BASE}/api/interviews/sessions/${session.id}/pause`, {
+      const res = await apiFetch(`/api/interviews/sessions/${session.id}/pause`, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        credentials: 'include',
         body: JSON.stringify({ current_question_index: currentIndex }),
       });
       if (res.ok) {
@@ -765,9 +754,8 @@ export default function InterviewSession({ session: initialSession, onBackToGene
     }
 
     try {
-      const res = await fetch(`${API_BASE}/api/interviews/sessions/${session.id}/resume`, {
+      const res = await apiFetch(`/api/interviews/sessions/${session.id}/resume`, {
         method: 'POST',
-        credentials: 'include',
       });
       if (res.ok) {
         const updated = await res.json();
@@ -783,10 +771,8 @@ export default function InterviewSession({ session: initialSession, onBackToGene
 
     if (currentQuestion.id && session.id) {
       try {
-        await fetch(`${API_BASE}/api/interviews/sessions/${session.id}/timings`, {
+        await apiFetch(`/api/interviews/sessions/${session.id}/timings`, {
           method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          credentials: 'include',
           body: JSON.stringify({
             question_id: currentQuestion.id,
             question_number: currentIndex + 1,
@@ -822,10 +808,8 @@ export default function InterviewSession({ session: initialSession, onBackToGene
     const currentVal = answers[currentIndex];
     if (currentQuestion.id && currentVal && currentVal.trim()) {
       try {
-        fetch(`${API_BASE}/api/interviews/sessions/${session.id}/answers`, {
+        apiFetch(`/api/interviews/sessions/${session.id}/answers`, {
           method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          credentials: 'include',
           body: JSON.stringify({
             question_id: currentQuestion.id,
             user_answer: currentVal,
@@ -865,10 +849,8 @@ export default function InterviewSession({ session: initialSession, onBackToGene
 
     if (currentQuestion.id && answers[currentIndex]) {
       try {
-        await fetch(`${API_BASE}/api/interviews/sessions/${session.id}/answers`, {
+        await apiFetch(`/api/interviews/sessions/${session.id}/answers`, {
           method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          credentials: 'include',
           body: JSON.stringify({
             question_id: currentQuestion.id,
             user_answer: answers[currentIndex],
@@ -912,10 +894,8 @@ export default function InterviewSession({ session: initialSession, onBackToGene
 
     // Finalize proctoring summary on session end
     try {
-      await fetch(`${API_BASE}/api/interviews/sessions/${session.id}/proctoring/summary`, {
+      await apiFetch(`/api/interviews/sessions/${session.id}/proctoring/summary`, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        credentials: 'include',
         body: JSON.stringify({ face_verification_status: 'PASSED' })
       });
     } catch (_e) {}
@@ -923,9 +903,8 @@ export default function InterviewSession({ session: initialSession, onBackToGene
     // Call backend end endpoint ONLY after recording upload completes
     let finalSession = session;
     try {
-      const res = await fetch(`${API_BASE}/api/interviews/sessions/${session.id}/end`, {
+      const res = await apiFetch(`/api/interviews/sessions/${session.id}/end`, {
         method: 'POST',
-        credentials: 'include',
       });
       if (res.ok) {
         finalSession = await res.json();
@@ -971,9 +950,8 @@ export default function InterviewSession({ session: initialSession, onBackToGene
       const ext = mimeType.includes('mp4') ? 'mp4' : 'webm';
       formData.append('file', blob, `recording_${targetSession.id}.${ext}`);
 
-      const res = await fetch(`${API_BASE}/api/interviews/sessions/${targetSession.id}/recording`, {
+      const res = await apiFetch(`/api/interviews/sessions/${targetSession.id}/recording`, {
         method: 'POST',
-        credentials: 'include',
         body: formData,
       });
 
@@ -1029,10 +1007,8 @@ export default function InterviewSession({ session: initialSession, onBackToGene
   const triggerCommunicationAnalysis = async (qId, qNum, text, durationSecs) => {
     if (!text || text.trim().length < 5) return;
     try {
-      const res = await fetch(`${API_BASE}/api/interviews/sessions/${session.id}/communication-analysis`, {
+      const res = await apiFetch(`/api/interviews/sessions/${session.id}/communication-analysis`, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        credentials: 'include',
         body: JSON.stringify({
           question_id: qId,
           question_number: qNum,
@@ -1064,10 +1040,8 @@ export default function InterviewSession({ session: initialSession, onBackToGene
 
   const submitBehavioralAnalysis = async () => {
     try {
-      await fetch(`${API_BASE}/api/interviews/sessions/${session.id}/behavior-analysis`, {
+      await apiFetch(`/api/interviews/sessions/${session.id}/behavior-analysis`, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        credentials: 'include',
         body: JSON.stringify({
           eye_contact_percentage: eyeContactStats.eyeContactPct,
           looking_away_duration: eyeContactStats.lookingAwayDuration,
@@ -1100,10 +1074,8 @@ export default function InterviewSession({ session: initialSession, onBackToGene
     triggerCommunicationAnalysis(currentQuestion.id, currentIndex + 1, userAnswer, effectiveDuration);
 
     try {
-      const res = await fetch(`${API_BASE}/api/interviews/sessions/${session.id}/answers`, {
+      const res = await apiFetch(`/api/interviews/sessions/${session.id}/answers`, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        credentials: 'include',
         body: JSON.stringify({
           question_id: currentQuestion.id,
           user_answer: userAnswer,
@@ -1144,10 +1116,8 @@ export default function InterviewSession({ session: initialSession, onBackToGene
 
     try {
       if (currentQuestion.id && answers[currentIndex]) {
-        await fetch(`${API_BASE}/api/interviews/sessions/${session.id}/answers`, {
+        await apiFetch(`/api/interviews/sessions/${session.id}/answers`, {
           method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          credentials: 'include',
           body: JSON.stringify({
             question_id: currentQuestion.id,
             user_answer: answers[currentIndex],
@@ -1772,7 +1742,7 @@ export default function InterviewSession({ session: initialSession, onBackToGene
                 <span style={{ fontSize: '0.8rem', fontWeight: 600, color: 'var(--text-secondary)' }}>▶ Play Spoken Answer:</span>
                 <audio
                   controls
-                  src={audioBlobs[currentIndex].url || `${API_BASE}/api/sessions/${session.id}/answers/audio/${currentQuestion.id}`}
+                  src={audioBlobs[currentIndex].url || `/api/sessions/${session.id}/answers/audio/${currentQuestion.id}`}
                   style={{ height: 36, width: '100%', maxWidth: 420 }}
                 />
               </div>

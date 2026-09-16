@@ -7,7 +7,7 @@ import {
   CheckCircle2, XCircle, RefreshCw, Lock, Sparkles, User, Play, StopCircle
 } from 'lucide-react';
 
-const API_BASE = import.meta.env.VITE_API_URL || 'http://localhost:5000';
+import { apiFetch } from '../../api/apiClient';
 
 export default function PreInterviewSecurityCheck({ onChecksPassed, onCancel }) {
   const [checks, setChecks] = useState({
@@ -169,7 +169,7 @@ export default function PreInterviewSecurityCheck({ onChecksPassed, onCancel }) 
 
     // 6. Network Connection to SmartHire API Health
     try {
-      const res = await fetch(`${API_BASE}/api/health`);
+      const res = await apiFetch('/api/health');
       if (res.ok) {
         updateCheck('network', 'PASSED', 'Connected to SmartHire server');
       } else {

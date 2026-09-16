@@ -4,14 +4,15 @@
 import * as tf from '@tensorflow/tfjs';
 import * as cocoSsd from '@tensorflow-models/coco-ssd';
 import * as faceLandmarksDetection from '@tensorflow-models/face-landmarks-detection';
+import { apiFetch } from '../../api/apiClient';
 
 export const PROCTORING_CONFIG = {
   LOOKING_AWAY_THRESHOLD_MS: 3000,
   MULTIPLE_FACE_THRESHOLD_MS: 1500,
   FACE_NOT_VISIBLE_THRESHOLD_MS: 3000,
-  PHONE_CONFIDENCE_THRESHOLD: 0.40, // 0.40 threshold as required for debugging & real-world angles
-  PHONE_REQUIRED_CONSECUTIVE_DETECTIONS: 3, // 3 consecutive detections required
-  LOOKING_AWAY_WARNING_COOLDOWN_MS: 30000,
+  PHONE_CONFIDENCE_THRESHOLD: 0.50,
+  PHONE_TRIGGER_COUNT: 3,
+  WARNING_COOLDOWN_MS: 15000,
   MULTIPLE_FACE_WARNING_COOLDOWN_MS: 30000,
   SYNC_INTERVAL_MS: 6000,
 };
@@ -19,7 +20,7 @@ export const PROCTORING_CONFIG = {
 export class ProctoringWarningManager {
   constructor(options = {}) {
     this.sessionId = options.sessionId || null;
-    this.apiBase = options.apiBase || 'http://localhost:5000';
+    this.apiBase = options.apiBase || '';
     this.onWarning = options.onWarning || null;
     this.onStatusChange = options.onStatusChange || null;
     this.onEventRecorded = options.onEventRecorded || null;
@@ -723,13 +724,9 @@ export class ProctoringWarningManager {
     this.eventQueue = [];
 
     try {
-      const headers = { 'Content-Type': 'application/json' };
-
-      const res = await fetch(`${this.apiBase}/api/interviews/${this.sessionId}/proctoring/events`, {
+      const res = await apiFetch(`/api/interviews/${this.sessionId}/proctoring/events`, {
         method: 'POST',
-        headers,
         body: JSON.stringify({ events: eventsToSend }),
-        credentials: 'include'
       });
       if (!res.ok) {
         this.eventQueue = [...eventsToSend, ...this.eventQueue];

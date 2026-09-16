@@ -1,9 +1,7 @@
 import { useState, useEffect } from 'react';
 import { useAuth } from '../context/AuthContext';
-import { apiFetch } from '../api/apiClient';
+import { apiFetch, API_BASE, safeJsonParse } from '../api/apiClient';
 import './login.css';
-
-const API_BASE = import.meta.env.VITE_API_URL || 'http://localhost:5000';
 
 // Icons (inline SVG to avoid extra deps)
 function IconZap()      { return <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/></svg>; }
@@ -115,17 +113,17 @@ export default function LoginPage({ onSuccess }) {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ email: resetEmail.trim() }),
       });
-      const data = await res.json();
-      if (res.ok && data.success) {
+      const data = await safeJsonParse(res);
+      if (res.ok && data?.success) {
         if (data.reset_token) {
           setResetToken(data.reset_token);
           setResetMsg('Reset token generated successfully!');
         } else {
-          setResetMsg(data.message);
+          setResetMsg(data.message || 'Password reset request processed.');
         }
         setResetStep(2);
       } else {
-        setResetErr(data.detail || data.message || 'Failed to request password reset.');
+        setResetErr(data?.detail || data?.message || `Failed to request password reset (HTTP ${res.status}).`);
       }
     } catch (err) {
       setResetErr(err.message || 'Network error requesting password reset.');
@@ -145,8 +143,8 @@ export default function LoginPage({ onSuccess }) {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ token: resetToken.trim(), new_password: newPassword }),
       });
-      const data = await res.json();
-      if (res.ok && data.success) {
+      const data = await safeJsonParse(res);
+      if (res.ok && data?.success) {
         setResetMsg('Password reset successfully! You can now log in.');
         setEmail(resetEmail);
         setTimeout(() => {
@@ -155,7 +153,7 @@ export default function LoginPage({ onSuccess }) {
           setResetMsg('');
         }, 2000);
       } else {
-        setResetErr(data.detail || data.message || 'Failed to reset password.');
+        setResetErr(data?.detail || data?.message || `Failed to reset password (HTTP ${res.status}).`);
       }
     } catch (err) {
       setResetErr(err.message || 'Network error resetting password.');
@@ -163,6 +161,7 @@ export default function LoginPage({ onSuccess }) {
       setIsResetting(false);
     }
   };
+
 
   // Pick up OAuth error from sessionStorage (set by AuthContext on redirect)
   useEffect(() => {

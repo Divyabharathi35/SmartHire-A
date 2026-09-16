@@ -7,8 +7,6 @@ import {
 } from 'lucide-react';
 import { ProctoringWarningManager, PROCTORING_CONFIG } from './ProctoringWarningManager';
 
-const API_BASE = import.meta.env.VITE_API_URL || 'http://localhost:5000';
-
 export default function ProctoringEngine({
   sessionId,
   videoRef,
@@ -39,7 +37,6 @@ export default function ProctoringEngine({
 
     const manager = new ProctoringWarningManager({
       sessionId,
-      apiBase: API_BASE,
       onWarning: (warningObj) => {
         setActiveWarning(warningObj);
       },

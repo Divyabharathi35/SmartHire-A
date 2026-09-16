@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef } from 'react';
-import { apiFetch, getAuthToken, API_BASE } from '../../api/apiClient';
+import { apiFetch, getAuthToken } from '../../api/apiClient';
 import {
   Search, ChevronDown, ChevronUp, Filter, Star, Clock, Video,
   CheckCircle, AlertCircle, X, Award, BarChart2, Shield, RefreshCw,
@@ -10,10 +10,10 @@ import {
 import ErrorBoundary from '../common/ErrorBoundary';
 
 const STATUS_BADGE = {
-  'completed':   'badge-success',
+  'completed': 'badge-success',
   'in_progress': 'badge-primary',
-  'paused':      'badge-warning',
-  'created':     'badge-neutral',
+  'paused': 'badge-warning',
+  'created': 'badge-neutral',
 };
 
 function formatSecs(secs) {
@@ -59,22 +59,22 @@ function safeRenderBbox(bbox) {
 }
 
 export default function CandidateReports() {
-  const [interviews, setInterviews]     = useState([]);
-  const [analytics, setAnalytics]       = useState(null);
-  const [loading, setLoading]           = useState(true);
-  const [search, setSearch]             = useState('');
+  const [interviews, setInterviews] = useState([]);
+  const [analytics, setAnalytics] = useState(null);
+  const [loading, setLoading] = useState(true);
+  const [search, setSearch] = useState('');
   const [statusFilter, setStatusFilter] = useState('all');
-  const [typeFilter, setTypeFilter]     = useState('all');
-  const [sortKey, setSortKey]           = useState('completed_at');
-  const [sortOrder, setSortOrder]       = useState('desc');
+  const [typeFilter, setTypeFilter] = useState('all');
+  const [sortKey, setSortKey] = useState('completed_at');
+  const [sortOrder, setSortOrder] = useState('desc');
   const [selectedSessionId, setSelectedSessionId] = useState(null);
-  const [sessionDetail, setSessionDetail]         = useState(null);
-  const [loadingDetail, setLoadingDetail]         = useState(false);
-  const [detailError, setDetailError]             = useState(null);
+  const [sessionDetail, setSessionDetail] = useState(null);
+  const [loadingDetail, setLoadingDetail] = useState(false);
+  const [detailError, setDetailError] = useState(null);
   const [selectedEventDetail, setSelectedEventDetail] = useState(null);
-  const [videoError, setVideoError]               = useState(false);
+  const [videoError, setVideoError] = useState(false);
   const [regeneratingFeedback, setRegeneratingFeedback] = useState(false);
-  const [activeTab, setActiveTab]                 = useState('overview');
+  const [activeTab, setActiveTab] = useState('overview');
 
   const reportContainerRef = useRef(null);
 
@@ -544,7 +544,7 @@ export default function CandidateReports() {
               const commAnalysis = Array.isArray(sessionDetail.communication_analysis) ? sessionDetail.communication_analysis : [];
               const speechSummary = sessionDetail.speech_analysis_summary || null;
               const behAnalysis = sessionDetail.behavior_analysis || null;
-              
+
               // ── Deterministic Emotion Detection Fallback Generator ──────────
               const getFallbackEmotionData = (sid) => {
                 const sStr = String(sid || 'session_default');
@@ -554,10 +554,10 @@ export default function CandidateReports() {
                   hash |= 0;
                 }
                 const pool = [
-                  { dom: "Neutral", dist: [ { emotion: "Neutral", count: 10, percentage: 52 }, { emotion: "Happy", count: 5, percentage: 23 }, { emotion: "Surprise", count: 3, percentage: 15 }, { emotion: "Sad", count: 2, percentage: 10 } ], conf: 0.87 },
-                  { dom: "Happy", dist: [ { emotion: "Happy", count: 11, percentage: 55 }, { emotion: "Neutral", count: 5, percentage: 25 }, { emotion: "Surprise", count: 2, percentage: 12 }, { emotion: "Angry", count: 2, percentage: 8 } ], conf: 0.89 },
-                  { dom: "Neutral", dist: [ { emotion: "Neutral", count: 12, percentage: 58 }, { emotion: "Happy", count: 4, percentage: 22 }, { emotion: "Surprise", count: 2, percentage: 12 }, { emotion: "Fear", count: 2, percentage: 8 } ], conf: 0.86 },
-                  { dom: "Focused", dist: [ { emotion: "Neutral", count: 12, percentage: 60 }, { emotion: "Happy", count: 4, percentage: 20 }, { emotion: "Surprise", count: 2, percentage: 10 }, { emotion: "Disgust", count: 2, percentage: 10 } ], conf: 0.88 },
+                  { dom: "Neutral", dist: [{ emotion: "Neutral", count: 10, percentage: 52 }, { emotion: "Happy", count: 5, percentage: 23 }, { emotion: "Surprise", count: 3, percentage: 15 }, { emotion: "Sad", count: 2, percentage: 10 }], conf: 0.87 },
+                  { dom: "Happy", dist: [{ emotion: "Happy", count: 11, percentage: 55 }, { emotion: "Neutral", count: 5, percentage: 25 }, { emotion: "Surprise", count: 2, percentage: 12 }, { emotion: "Angry", count: 2, percentage: 8 }], conf: 0.89 },
+                  { dom: "Neutral", dist: [{ emotion: "Neutral", count: 12, percentage: 58 }, { emotion: "Happy", count: 4, percentage: 22 }, { emotion: "Surprise", count: 2, percentage: 12 }, { emotion: "Fear", count: 2, percentage: 8 }], conf: 0.86 },
+                  { dom: "Focused", dist: [{ emotion: "Neutral", count: 12, percentage: 60 }, { emotion: "Happy", count: 4, percentage: 20 }, { emotion: "Surprise", count: 2, percentage: 10 }, { emotion: "Disgust", count: 2, percentage: 10 }], conf: 0.88 },
                 ];
                 const chosen = pool[Math.abs(hash) % pool.length];
                 return {
@@ -890,9 +890,9 @@ export default function CandidateReports() {
                           }} />
                         </div>
                         <div style={{ fontSize: '0.74rem', color: 'var(--text-muted)', lineHeight: 1.6, marginTop: 'auto' }}>
-                          &bull; Speech clarity &amp; articulation<br/>
-                          &bull; Grammatical correctness<br/>
-                          &bull; Filler words minimization<br/>
+                          &bull; Speech clarity &amp; articulation<br />
+                          &bull; Grammatical correctness<br />
+                          &bull; Filler words minimization<br />
                           &bull; Answer structure &amp; conciseness
                         </div>
                       </div>
@@ -923,9 +923,9 @@ export default function CandidateReports() {
                           }} />
                         </div>
                         <div style={{ fontSize: '0.74rem', color: 'var(--text-muted)', lineHeight: 1.6, marginTop: 'auto' }}>
-                          &bull; Observable eye contact ratio<br/>
-                          &bull; Facial engagement stability<br/>
-                          &bull; Response hesitation &amp; poise<br/>
+                          &bull; Observable eye contact ratio<br />
+                          &bull; Facial engagement stability<br />
+                          &bull; Response hesitation &amp; poise<br />
                           &bull; Composure under questioning
                         </div>
                       </div>
@@ -956,9 +956,9 @@ export default function CandidateReports() {
                           }} />
                         </div>
                         <div style={{ fontSize: '0.74rem', color: 'var(--text-muted)', lineHeight: 1.6, marginTop: 'auto' }}>
-                          &bull; Core technical accuracy<br/>
-                          &bull; Keyword &amp; conceptual depth<br/>
-                          &bull; Problem solving architecture<br/>
+                          &bull; Core technical accuracy<br />
+                          &bull; Keyword &amp; conceptual depth<br />
+                          &bull; Problem solving architecture<br />
                           &bull; Domain knowledge precision
                         </div>
                       </div>
@@ -989,9 +989,9 @@ export default function CandidateReports() {
                           }} />
                         </div>
                         <div style={{ fontSize: '0.74rem', color: 'var(--text-muted)', lineHeight: 1.6, marginTop: 'auto' }}>
-                          &bull; Time management &amp; pacing<br/>
-                          &bull; Professional workplace tone<br/>
-                          &bull; Interview etiquette<br/>
+                          &bull; Time management &amp; pacing<br />
+                          &bull; Professional workplace tone<br />
+                          &bull; Interview etiquette<br />
                           &bull; Cohesive presentation
                         </div>
                       </div>
@@ -1210,7 +1210,7 @@ export default function CandidateReports() {
                     </div>
 
                     {(() => {
-                      const videoSrc = `${API_BASE}/api/interviews/sessions/${selectedSessionId}/recording`;
+                      const videoSrc = `/api/interviews/sessions/${selectedSessionId}/recording`;
 
                       if (sessionDetail.has_recording && !videoError) {
                         return (
@@ -1390,7 +1390,7 @@ export default function CandidateReports() {
                                   <audio
                                     controls
                                     crossOrigin="use-credentials"
-                                    src={`${API_BASE}/api/interviews/sessions/${selectedSessionId}/answers/audio/${qr.question_id || qr.id}`}
+                                    src={`/api/interviews/sessions/${selectedSessionId}/answers/audio/${qr.question_id || qr.id}`}
                                     onError={(e) => {
                                       console.warn(`[CandidateReports] Audio answer playback error for Q${qNum}:`, e);
                                     }}
@@ -1533,8 +1533,8 @@ export default function CandidateReports() {
                           Communication Observations:
                         </span>
                         <div style={{ fontSize: '0.82rem', color: 'var(--text-primary)', lineHeight: 1.6 }}>
-                          &bull; Total Analyzed Voice Duration: <strong>{speechSummary?.total_speaking_duration || 0} seconds</strong> across {commAnalysis.length} answers.<br/>
-                          &bull; Overall Voice Delivery Pace: <strong>{speechSummary?.pace_category || 'Standard'}</strong>.<br/>
+                          &bull; Total Analyzed Voice Duration: <strong>{speechSummary?.total_speaking_duration || 0} seconds</strong> across {commAnalysis.length} answers.<br />
+                          &bull; Overall Voice Delivery Pace: <strong>{speechSummary?.pace_category || 'Standard'}</strong>.<br />
                           &bull; Communication Clarity Rating: <strong>{commScoreVal !== null ? `${commScoreVal}%` : 'Not available'}</strong>.
                         </div>
                       </div>
@@ -1675,191 +1675,191 @@ export default function CandidateReports() {
                     </div>
 
                     <div>
-                        {/* Dynamic Metrics Cards */}
-                        <div className="grid-4" style={{ gap: 14, marginBottom: 20 }}>
-                          {/* Dominant Indicator */}
-                          <div style={{ background: 'var(--bg-surface)', padding: 14, borderRadius: 'var(--radius-sm)', border: '1px solid var(--border-subtle)' }}>
-                            <span style={{ fontSize: '0.72rem', color: 'var(--text-muted)', textTransform: 'uppercase', fontWeight: 700, display: 'block' }}>
-                              Dominant Indicator
-                            </span>
-                            <div style={{ fontSize: '1.25rem', fontWeight: 800, color: 'var(--accent-primary)', marginTop: 4, textTransform: 'capitalize' }}>
-                              {emotionDetection.dominant_emotion || 'Neutral'}
-                            </div>
-                            <span style={{ fontSize: '0.72rem', color: 'var(--text-muted)' }}>
-                              Most prevalent facial expression
-                            </span>
+                      {/* Dynamic Metrics Cards */}
+                      <div className="grid-4" style={{ gap: 14, marginBottom: 20 }}>
+                        {/* Dominant Indicator */}
+                        <div style={{ background: 'var(--bg-surface)', padding: 14, borderRadius: 'var(--radius-sm)', border: '1px solid var(--border-subtle)' }}>
+                          <span style={{ fontSize: '0.72rem', color: 'var(--text-muted)', textTransform: 'uppercase', fontWeight: 700, display: 'block' }}>
+                            Dominant Indicator
+                          </span>
+                          <div style={{ fontSize: '1.25rem', fontWeight: 800, color: 'var(--accent-primary)', marginTop: 4, textTransform: 'capitalize' }}>
+                            {emotionDetection.dominant_emotion || 'Neutral'}
                           </div>
-
-                          {/* Detection Reliability */}
-                          <div style={{ background: 'var(--bg-surface)', padding: 14, borderRadius: 'var(--radius-sm)', border: '1px solid var(--border-subtle)' }}>
-                            <span style={{ fontSize: '0.72rem', color: 'var(--text-muted)', textTransform: 'uppercase', fontWeight: 700, display: 'block' }}>
-                              Detection Reliability
-                            </span>
-                            <div style={{ fontSize: '1.25rem', fontWeight: 800, color: emotionDetection.average_confidence ? 'var(--accent-green)' : 'var(--text-muted)', marginTop: 4 }}>
-                              {emotionDetection.average_confidence !== null && emotionDetection.average_confidence !== undefined
-                                ? `${Math.round(emotionDetection.average_confidence * 100)}%`
-                                : 'Available'}
-                            </div>
-                            <span style={{ fontSize: '0.72rem', color: 'var(--text-muted)' }}>
-                              Average inference confidence
-                            </span>
-                          </div>
-
-                          {/* Analyzed Samples */}
-                          <div style={{ background: 'var(--bg-surface)', padding: 14, borderRadius: 'var(--radius-sm)', border: '1px solid var(--border-subtle)' }}>
-                            <span style={{ fontSize: '0.72rem', color: 'var(--text-muted)', textTransform: 'uppercase', fontWeight: 700, display: 'block' }}>
-                              Valid Face Samples
-                            </span>
-                            <div style={{ fontSize: '1.25rem', fontWeight: 800, color: 'var(--text-primary)', marginTop: 4 }}>
-                              {emotionDetection.valid_face_samples?.toLocaleString() || 0}
-                            </div>
-                            <span style={{ fontSize: '0.72rem', color: 'var(--text-muted)' }}>
-                              {emotionDetection.samples_analyzed ? `out of ${emotionDetection.samples_analyzed} captured` : 'analyzed frames'}
-                            </span>
-                          </div>
-
-                          {/* Camera Tracking Stability */}
-                          <div style={{ background: 'var(--bg-surface)', padding: 14, borderRadius: 'var(--radius-sm)', border: '1px solid var(--border-subtle)' }}>
-                            <span style={{ fontSize: '0.72rem', color: 'var(--text-muted)', textTransform: 'uppercase', fontWeight: 700, display: 'block' }}>
-                              Tracking Stability
-                            </span>
-                            <div style={{ fontSize: '1.25rem', fontWeight: 800, color: 'var(--accent-teal)', marginTop: 4 }}>
-                              {emotionDetection.samples_analyzed > 0
-                                ? `${Math.round(((emotionDetection.valid_face_samples || 0) / emotionDetection.samples_analyzed) * 100)}%`
-                                : '100%'}
-                            </div>
-                            <span style={{ fontSize: '0.72rem', color: 'var(--text-muted)' }}>
-                              No face detected: {emotionDetection.no_face_samples || 0}
-                            </span>
-                          </div>
+                          <span style={{ fontSize: '0.72rem', color: 'var(--text-muted)' }}>
+                            Most prevalent facial expression
+                          </span>
                         </div>
 
-                        {/* Emotion Distribution (Rendered dynamically from backend model output) */}
+                        {/* Detection Reliability */}
+                        <div style={{ background: 'var(--bg-surface)', padding: 14, borderRadius: 'var(--radius-sm)', border: '1px solid var(--border-subtle)' }}>
+                          <span style={{ fontSize: '0.72rem', color: 'var(--text-muted)', textTransform: 'uppercase', fontWeight: 700, display: 'block' }}>
+                            Detection Reliability
+                          </span>
+                          <div style={{ fontSize: '1.25rem', fontWeight: 800, color: emotionDetection.average_confidence ? 'var(--accent-green)' : 'var(--text-muted)', marginTop: 4 }}>
+                            {emotionDetection.average_confidence !== null && emotionDetection.average_confidence !== undefined
+                              ? `${Math.round(emotionDetection.average_confidence * 100)}%`
+                              : 'Available'}
+                          </div>
+                          <span style={{ fontSize: '0.72rem', color: 'var(--text-muted)' }}>
+                            Average inference confidence
+                          </span>
+                        </div>
+
+                        {/* Analyzed Samples */}
+                        <div style={{ background: 'var(--bg-surface)', padding: 14, borderRadius: 'var(--radius-sm)', border: '1px solid var(--border-subtle)' }}>
+                          <span style={{ fontSize: '0.72rem', color: 'var(--text-muted)', textTransform: 'uppercase', fontWeight: 700, display: 'block' }}>
+                            Valid Face Samples
+                          </span>
+                          <div style={{ fontSize: '1.25rem', fontWeight: 800, color: 'var(--text-primary)', marginTop: 4 }}>
+                            {emotionDetection.valid_face_samples?.toLocaleString() || 0}
+                          </div>
+                          <span style={{ fontSize: '0.72rem', color: 'var(--text-muted)' }}>
+                            {emotionDetection.samples_analyzed ? `out of ${emotionDetection.samples_analyzed} captured` : 'analyzed frames'}
+                          </span>
+                        </div>
+
+                        {/* Camera Tracking Stability */}
+                        <div style={{ background: 'var(--bg-surface)', padding: 14, borderRadius: 'var(--radius-sm)', border: '1px solid var(--border-subtle)' }}>
+                          <span style={{ fontSize: '0.72rem', color: 'var(--text-muted)', textTransform: 'uppercase', fontWeight: 700, display: 'block' }}>
+                            Tracking Stability
+                          </span>
+                          <div style={{ fontSize: '1.25rem', fontWeight: 800, color: 'var(--accent-teal)', marginTop: 4 }}>
+                            {emotionDetection.samples_analyzed > 0
+                              ? `${Math.round(((emotionDetection.valid_face_samples || 0) / emotionDetection.samples_analyzed) * 100)}%`
+                              : '100%'}
+                          </div>
+                          <span style={{ fontSize: '0.72rem', color: 'var(--text-muted)' }}>
+                            No face detected: {emotionDetection.no_face_samples || 0}
+                          </span>
+                        </div>
+                      </div>
+
+                      {/* Emotion Distribution (Rendered dynamically from backend model output) */}
+                      <div style={{
+                        background: 'var(--bg-surface)',
+                        padding: '18px 20px',
+                        borderRadius: 'var(--radius-md)',
+                        border: '1px solid var(--border-subtle)',
+                        marginBottom: emotionDetection.timeline && emotionDetection.timeline.length > 0 ? 18 : 0
+                      }}>
+                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 14, flexWrap: 'wrap', gap: 8 }}>
+                          <span style={{ fontSize: '0.82rem', fontWeight: 800, color: 'var(--text-primary)', textTransform: 'uppercase', letterSpacing: '0.5px' }}>
+                            Emotion Distribution
+                          </span>
+                          <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>
+                            Relative frequency across {emotionDetection.valid_face_samples} validated face frames
+                          </span>
+                        </div>
+
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+                          {emotionDetection.distribution.map((item) => {
+                            const emoKey = String(item.emotion || '').toLowerCase();
+                            let barColor = 'var(--accent-primary)';
+                            if (emoKey.includes('happy')) barColor = 'var(--accent-green)';
+                            else if (emoKey.includes('neutral')) barColor = '#6366f1';
+                            else if (emoKey.includes('surprise')) barColor = '#8b5cf6';
+                            else if (emoKey.includes('sad')) barColor = '#0284c7';
+                            else if (emoKey.includes('fear')) barColor = '#d97706';
+                            else if (emoKey.includes('disgust')) barColor = '#f59e0b';
+                            else if (emoKey.includes('angry')) barColor = '#ef4444';
+
+                            return (
+                              <div key={item.emotion} style={{ display: 'flex', alignItems: 'center', gap: 14 }}>
+                                <div style={{ width: 100, textTransform: 'capitalize', fontWeight: 700, fontSize: '0.85rem', color: 'var(--text-primary)' }}>
+                                  {item.emotion}
+                                </div>
+                                <div style={{ flex: 1, background: 'var(--bg-elevated)', borderRadius: 99, height: 10, overflow: 'hidden', border: '1px solid var(--border-subtle)' }}>
+                                  <div style={{
+                                    width: `${Math.min(100, Math.max(0, item.percentage))}%`,
+                                    height: '100%',
+                                    background: barColor,
+                                    borderRadius: 99,
+                                    transition: 'width 0.4s ease'
+                                  }} />
+                                </div>
+                                <div style={{ width: 60, textAlign: 'right', fontFamily: 'var(--font-mono)', fontWeight: 800, fontSize: '0.88rem', color: 'var(--text-primary)' }}>
+                                  {item.percentage}%
+                                </div>
+                                <div style={{ width: 90, textAlign: 'right', fontSize: '0.75rem', color: 'var(--text-muted)', fontFamily: 'var(--font-mono)' }}>
+                                  {item.count} {item.count === 1 ? 'sample' : 'samples'}
+                                </div>
+                              </div>
+                            );
+                          })}
+                        </div>
+                      </div>
+
+                      {/* Emotion Timeline (if available) */}
+                      {emotionDetection.timeline && emotionDetection.timeline.length > 0 && (
                         <div style={{
                           background: 'var(--bg-surface)',
                           padding: '18px 20px',
                           borderRadius: 'var(--radius-md)',
-                          border: '1px solid var(--border-subtle)',
-                          marginBottom: emotionDetection.timeline && emotionDetection.timeline.length > 0 ? 18 : 0
+                          border: '1px solid var(--border-subtle)'
                         }}>
                           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 14, flexWrap: 'wrap', gap: 8 }}>
                             <span style={{ fontSize: '0.82rem', fontWeight: 800, color: 'var(--text-primary)', textTransform: 'uppercase', letterSpacing: '0.5px' }}>
-                              Emotion Distribution
+                              Emotion Timeline
                             </span>
                             <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>
-                              Relative frequency across {emotionDetection.valid_face_samples} validated face frames
+                              Timestamped model inferences ({emotionDetection.timeline.length} sample events)
                             </span>
                           </div>
 
-                          <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
-                            {emotionDetection.distribution.map((item) => {
-                              const emoKey = String(item.emotion || '').toLowerCase();
-                              let barColor = 'var(--accent-primary)';
-                              if (emoKey.includes('happy')) barColor = 'var(--accent-green)';
-                              else if (emoKey.includes('neutral')) barColor = '#6366f1';
-                              else if (emoKey.includes('surprise')) barColor = '#8b5cf6';
-                              else if (emoKey.includes('sad')) barColor = '#0284c7';
-                              else if (emoKey.includes('fear')) barColor = '#d97706';
-                              else if (emoKey.includes('disgust')) barColor = '#f59e0b';
-                              else if (emoKey.includes('angry')) barColor = '#ef4444';
+                          <div style={{
+                            display: 'flex',
+                            gap: 10,
+                            overflowX: 'auto',
+                            paddingBottom: 8,
+                            scrollbarWidth: 'thin'
+                          }}>
+                            {emotionDetection.timeline.map((evt, idx) => {
+                              const emoName = String(evt.emotion || 'neutral').toLowerCase();
+                              let badgeBg = 'rgba(99, 102, 241, 0.15)';
+                              let badgeColor = 'var(--accent-primary)';
+                              if (emoName.includes('happy')) { badgeBg = 'rgba(16, 185, 129, 0.15)'; badgeColor = 'var(--accent-green)'; }
+                              else if (emoName.includes('surprise')) { badgeBg = 'rgba(139, 92, 246, 0.15)'; badgeColor = '#8b5cf6'; }
+                              else if (emoName.includes('sad')) { badgeBg = 'rgba(2, 132, 199, 0.15)'; badgeColor = '#0284c7'; }
+                              else if (emoName.includes('fear') || emoName.includes('disgust')) { badgeBg = 'rgba(245, 158, 11, 0.15)'; badgeColor = 'var(--accent-amber)'; }
+                              else if (emoName.includes('angry')) { badgeBg = 'rgba(239, 68, 68, 0.15)'; badgeColor = '#ef4444'; }
 
                               return (
-                                <div key={item.emotion} style={{ display: 'flex', alignItems: 'center', gap: 14 }}>
-                                  <div style={{ width: 100, textTransform: 'capitalize', fontWeight: 700, fontSize: '0.85rem', color: 'var(--text-primary)' }}>
-                                    {item.emotion}
+                                <div key={idx} style={{
+                                  flexShrink: 0,
+                                  background: 'var(--bg-elevated)',
+                                  border: '1px solid var(--border-subtle)',
+                                  borderRadius: 'var(--radius-sm)',
+                                  padding: '8px 12px',
+                                  minWidth: 105,
+                                  textAlign: 'center'
+                                }}>
+                                  <div style={{ fontSize: '0.72rem', color: 'var(--text-muted)', fontFamily: 'var(--font-mono)', marginBottom: 4 }}>
+                                    {formatSecs(evt.timestamp_sec ?? evt.timestamp)}
                                   </div>
-                                  <div style={{ flex: 1, background: 'var(--bg-elevated)', borderRadius: 99, height: 10, overflow: 'hidden', border: '1px solid var(--border-subtle)' }}>
-                                    <div style={{
-                                      width: `${Math.min(100, Math.max(0, item.percentage))}%`,
-                                      height: '100%',
-                                      background: barColor,
-                                      borderRadius: 99,
-                                      transition: 'width 0.4s ease'
-                                    }} />
-                                  </div>
-                                  <div style={{ width: 60, textAlign: 'right', fontFamily: 'var(--font-mono)', fontWeight: 800, fontSize: '0.88rem', color: 'var(--text-primary)' }}>
-                                    {item.percentage}%
-                                  </div>
-                                  <div style={{ width: 90, textAlign: 'right', fontSize: '0.75rem', color: 'var(--text-muted)', fontFamily: 'var(--font-mono)' }}>
-                                    {item.count} {item.count === 1 ? 'sample' : 'samples'}
-                                  </div>
+                                  <span style={{
+                                    display: 'inline-block',
+                                    fontSize: '0.75rem',
+                                    fontWeight: 800,
+                                    padding: '2px 8px',
+                                    borderRadius: 99,
+                                    background: badgeBg,
+                                    color: badgeColor,
+                                    textTransform: 'capitalize'
+                                  }}>
+                                    {evt.emotion}
+                                  </span>
+                                  {evt.confidence !== undefined && evt.confidence !== null && (
+                                    <div style={{ fontSize: '0.68rem', color: 'var(--text-muted)', marginTop: 4, fontFamily: 'var(--font-mono)' }}>
+                                      {Math.round(evt.confidence * 100)}% conf
+                                    </div>
+                                  )}
                                 </div>
                               );
                             })}
                           </div>
                         </div>
-
-                        {/* Emotion Timeline (if available) */}
-                        {emotionDetection.timeline && emotionDetection.timeline.length > 0 && (
-                          <div style={{
-                            background: 'var(--bg-surface)',
-                            padding: '18px 20px',
-                            borderRadius: 'var(--radius-md)',
-                            border: '1px solid var(--border-subtle)'
-                          }}>
-                            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 14, flexWrap: 'wrap', gap: 8 }}>
-                              <span style={{ fontSize: '0.82rem', fontWeight: 800, color: 'var(--text-primary)', textTransform: 'uppercase', letterSpacing: '0.5px' }}>
-                                Emotion Timeline
-                              </span>
-                              <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>
-                                Timestamped model inferences ({emotionDetection.timeline.length} sample events)
-                              </span>
-                            </div>
-
-                            <div style={{
-                              display: 'flex',
-                              gap: 10,
-                              overflowX: 'auto',
-                              paddingBottom: 8,
-                              scrollbarWidth: 'thin'
-                            }}>
-                              {emotionDetection.timeline.map((evt, idx) => {
-                                const emoName = String(evt.emotion || 'neutral').toLowerCase();
-                                let badgeBg = 'rgba(99, 102, 241, 0.15)';
-                                let badgeColor = 'var(--accent-primary)';
-                                if (emoName.includes('happy')) { badgeBg = 'rgba(16, 185, 129, 0.15)'; badgeColor = 'var(--accent-green)'; }
-                                else if (emoName.includes('surprise')) { badgeBg = 'rgba(139, 92, 246, 0.15)'; badgeColor = '#8b5cf6'; }
-                                else if (emoName.includes('sad')) { badgeBg = 'rgba(2, 132, 199, 0.15)'; badgeColor = '#0284c7'; }
-                                else if (emoName.includes('fear') || emoName.includes('disgust')) { badgeBg = 'rgba(245, 158, 11, 0.15)'; badgeColor = 'var(--accent-amber)'; }
-                                else if (emoName.includes('angry')) { badgeBg = 'rgba(239, 68, 68, 0.15)'; badgeColor = '#ef4444'; }
-
-                                return (
-                                  <div key={idx} style={{
-                                    flexShrink: 0,
-                                    background: 'var(--bg-elevated)',
-                                    border: '1px solid var(--border-subtle)',
-                                    borderRadius: 'var(--radius-sm)',
-                                    padding: '8px 12px',
-                                    minWidth: 105,
-                                    textAlign: 'center'
-                                  }}>
-                                    <div style={{ fontSize: '0.72rem', color: 'var(--text-muted)', fontFamily: 'var(--font-mono)', marginBottom: 4 }}>
-                                      {formatSecs(evt.timestamp_sec ?? evt.timestamp)}
-                                    </div>
-                                    <span style={{
-                                      display: 'inline-block',
-                                      fontSize: '0.75rem',
-                                      fontWeight: 800,
-                                      padding: '2px 8px',
-                                      borderRadius: 99,
-                                      background: badgeBg,
-                                      color: badgeColor,
-                                      textTransform: 'capitalize'
-                                    }}>
-                                      {evt.emotion}
-                                    </span>
-                                    {evt.confidence !== undefined && evt.confidence !== null && (
-                                      <div style={{ fontSize: '0.68rem', color: 'var(--text-muted)', marginTop: 4, fontFamily: 'var(--font-mono)' }}>
-                                        {Math.round(evt.confidence * 100)}% conf
-                                      </div>
-                                    )}
-                                  </div>
-                                );
-                              })}
-                            </div>
-                          </div>
-                        )}
-                      </div>
+                      )}
+                    </div>
                   </div>
 
                   {/* ========================================================

@@ -75,7 +75,19 @@ app.include_router(analysis.router, prefix="/api")
 
 
 
-# ── Health check ─────────────────────────────────────────────
+# ── Root & Health check ──────────────────────────────────────
+@app.get("/", tags=["Root"])
+async def root():
+    return {
+        "name": "SmartHire API",
+        "status": "online",
+        "version": "1.0.0",
+        "docs": "/api/docs",
+        "health": "/api/health",
+        "frontend": settings.FRONTEND_URL,
+    }
+
+
 @app.get("/api/health", tags=["Health"])
 async def health():
     return {"success": True, "message": "SmartHire API is running 🚀"}
